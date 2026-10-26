@@ -1,24 +1,29 @@
-# OpenKitMaker-Native (Target C — Android Kotlin + Google Filament)
+# OpenKitMaker-Native
 
-Applicazione Android nativa per la progettazione, composizione 2D (2048×2048 RGBA) e visualizzazione 3D PBR a 60 FPS di kit grafici sportivi, sviluppata in conformità al **Contratto di Parità OpenKitMaker**.
+> **Target C: Android Nativo (Kotlin 2.0 + Jetpack Compose + Google Filament PBR)**  
+> **Autore:** [Marco Razzano](https://github.com/marcorzzn) (`@marcorzzn`)  
+> **Licenza:** [MIT](../LICENSE)
+
+Applicazione Android nativa per la progettazione, composizione 2D (2048×2048 RGBA) e visualizzazione 3D PBR a 60 FPS di kit grafici sportivi, sviluppata secondo il Design System ufficiale di **OpenKitMaker**.
 
 ---
 
 ## Architettura e Stack Tecnologico
 
-- **Linguaggio & SDK**: Kotlin 2.0.21, Min SDK 26 (Android 8.0), Target SDK 34 (Android 14)
+- **Linguaggio & SDK**: Kotlin 2.0.21, Min SDK 26 (Android 8.0), Compile SDK 35 (Android 15), Target SDK 34 (Android 14)
+- **Application ID**: `com.marcorazzano.openkitmaker`
 - **UI & Navigazione**: Jetpack Compose (Material 3), Single-Activity (`MainActivity`), Navigation Compose
 - **Architettura**: MVVM + Clean Architecture (`domain`, `data`, `render`, `export`, `ui`, `di`, `i18n`) con `StateFlow`, Coroutines e **Hilt**
-- **Rendering 3D GPU (Priorità #1)**: **Google Filament / SceneView** (`io.github.sceneview:sceneview:2.2.1`) su backend Vulkan / OpenGL ES 3.0. Nessun utilizzo di `Canvas.drawPath` software per il 3D.
+- **Rendering 3D GPU**: **Google Filament / SceneView** (`io.github.sceneview:sceneview:2.2.1`) su backend Vulkan / OpenGL ES 3.0 (60 FPS stabili, zero allocazioni JNI nel loop di render).
 - **Compositing 2D**: `TextureEngine.kt` su `Bitmap` / `Canvas` hardware-accelerated 2048×2048 con supporto per testo curvato su arco (`drawTextOnPath`), numeri bicolore con contorno, pattern geometrici procedurali e blend mode (`NORMAL`, `MULTIPLY`, `OVERLAY`).
-- **Persistenza Offline**: **Room** (SQLite) con conversione JSON deterministica dei layer e cache minikit 512×512.
+- **Persistenza Offline**: **Room** (SQLite) con salvataggio locale e cache minikit 512×512.
 - **Esportazione Asincrona**: **WorkManager** (`CoroutineWorker`) per l'esportazione lossless di `PNG 2048×2048` e pacchetti interoperabili `kit_<id>.zip` (`texture.png`, `preview.png`, `manifest.json` con checksum SHA-256) su `MediaStore.Downloads` (Scoped Storage Android 10+).
 
 ---
 
-## Tracciabilità Contratto di Parità (`SCR-*` / `FUN-*`)
+## Tracciabilità Specifiche Design System (`SCR-*` / `FUN-*`)
 
-| ID Contratto | Componente / File | Descrizione |
+| ID Specifiche | Componente / File | Descrizione |
 | :--- | :--- | :--- |
 | `SCR-HOME` | `ui/home/HomeScreen.kt`, `HomeViewModel.kt` | Dashboard con stato rete offline/online, ultime 3 bozze da Room, CTA nuovo kit |
 | `SCR-CATALOG` | `ui/catalog/CatalogScreen.kt` | Griglia template da Room, filtri a chip (`HOME`, `AWAY`, `THIRD`, `GK`, `SPECIAL`), ricerca |
@@ -37,26 +42,18 @@ Applicazione Android nativa per la progettazione, composizione 2D (2048×2048 RG
 
 ---
 
-## Vincoli di Performance Garantiti
+## Istruzioni di Compilazione (Gradle 8.9)
 
-1. **60 FPS Stabili (Frame Budget ≤ 16,6 ms, target 12 ms)**:
-   - `Kit3DRenderer.kt` pre-alloca le matrici di trasformazione `FloatArray(16)` (`cachedTransformMatrix`) evitando qualsiasi allocazione JNI nel callback di frame (`onFrame`).
-2. **Memoria Scena 3D ≤ 60 MB**:
-   - Caricamento mappe PBR in formato KTX2/ASTC (`MaterialFactory.kt`) con fallback PNG e rilascio esplicito (`engine.destroyTexture`, `engine.destroyMaterialInstance`) nel `DisposableEffect`.
-3. **Scoped Storage Android 10+**:
-   - Nessun permesso legacy richiesto su Android 10+ grazie a `MediaStore.Downloads` con transazione `IS_PENDING`.
+```bash
+# Compilazione APK Debug
+./gradlew :app:assembleDebug
+
+# Compilazione Bundle Release (AAB) per Google Play Store
+./gradlew :app:bundleRelease
+```
 
 ---
 
-## Istruzioni di Compilazione (Android Studio Ladybug / Gradle 8.9)
+## Autore
 
-1. Aprire la cartella `native/` in **Android Studio** (JDK 17 richiesto).
-2. Sincronizzare il progetto con i file Gradle (`gradle/libs.versions.toml`).
-3. Eseguire la build debug:
-   ```bash
-   ./gradlew :app:assembleDebug
-   ```
-4. Eseguire i test di parità:
-   ```bash
-   ./gradlew :app:testDebugUnitTest
-   ```
+**Marco Razzano** — [@marcorzzn](https://github.com/marcorzzn)

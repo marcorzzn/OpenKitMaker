@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OpenKitMaker-Native</string>
+    <string name="app_name">OpenKitMaker</string>
     <string name="app_offline_badge">Modalità Offline</string>
     <string name="app_online_badge">Locale Attivo</string>
     <string name="nav_home">Home</string>

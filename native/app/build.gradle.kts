@@ -12,7 +12,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.openkitmaker.android"
+        applicationId = "com.marcorazzano.openkitmaker"
         minSdk = 26
         targetSdk = 34
         versionCode = 100
