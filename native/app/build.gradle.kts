@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.openkitmaker.native"
+    namespace = "com.openkitmaker.android"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.openkitmaker.native"
+        applicationId = "com.openkitmaker.android"
         minSdk = 26
         targetSdk = 34
         versionCode = 100
