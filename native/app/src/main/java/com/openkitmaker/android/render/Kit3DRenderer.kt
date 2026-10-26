@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EDITOR / FUN-PREVIEW-3D
+// Implements: SCR-EDITOR / FUN-PREVIEW-3D
 package com.openkitmaker.android.render
 
 import android.graphics.Bitmap
@@ -109,7 +109,7 @@ fun Kit3DRenderer(
         currentAlbedoTexture = tex
 
         childNodes.filterIsInstance<ModelNode>().forEach { node ->
-            node.materialInstances.values.flatten().forEach { matInstance ->
+            node.materialInstances.forEach { matInstance ->
                 MaterialFactory.applyKitPbrParameters(
                     materialInstance = matInstance,
                     albedoTexture = tex,
