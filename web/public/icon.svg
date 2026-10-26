@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0F141C"/>
+  <rect x="24" y="24" width="464" height="464" rx="76" fill="#1A2230" stroke="#2E3D56" stroke-width="6"/>
+  <!-- Geometric Jersey Silhouette (Purely geometric, zero third-party marks) -->
+  <path d="M168 104 L212 104 C224 128 288 128 300 104 L344 104 L424 168 L388 232 L344 204 L344 408 L168 408 L168 204 L124 232 L88 168 Z" fill="#0F52BA" stroke="#FFFFFF" stroke-width="10" stroke-linejoin="round"/>
+  <!-- Geometric Diagonal Sash -->
+  <polygon points="184,148 228,148 328,392 284,392" fill="#00C49F"/>
+  <!-- Geometric Hexagon Crest Placeholder -->
+  <polygon points="296,162 314,172 314,192 296,202 278,192 278,172" fill="#FFFFFF"/>
+</svg>
