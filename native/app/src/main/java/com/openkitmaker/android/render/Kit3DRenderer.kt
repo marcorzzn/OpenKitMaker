@@ -109,7 +109,7 @@ fun Kit3DRenderer(
         currentAlbedoTexture = tex
 
         childNodes.filterIsInstance<ModelNode>().forEach { node ->
-            node.materialInstances.forEach { matInstance ->
+            node.materialInstances.flatten().forEach { matInstance ->
                 MaterialFactory.applyKitPbrParameters(
                     materialInstance = matInstance,
                     albedoTexture = tex,
