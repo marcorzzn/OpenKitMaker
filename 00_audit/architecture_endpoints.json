@@ -1,0 +1,80 @@
+[
+  {
+    "category": "3D_Shaders_and_PBR_Normals",
+    "pattern": "/kit-creator/static/normals/{mesh_part}_{version}.png",
+    "description": "Mappe normali per il rendering PBR del tessuto della divisa (trama tessile, cuciture, bordi).",
+    "examples": [
+      "/kit-creator/static/normals/jersey_24.png",
+      "/kit-creator/static/normals/shorts_24.png",
+      "/kit-creator/static/normals/socks_24.png"
+    ],
+    "format": "image/png",
+    "android_target": "Kit3DRenderer.kt (Caricamento normal map su materiale Filament/OpenGL)"
+  },
+  {
+    "category": "Template_Layers_and_Finishes",
+    "pattern": "/static/temp/{brand}/{kit_slug}/{part}_{layer}_{version}.png",
+    "description": "Livelli grafici specifici del template (pannelli laterali, colletti, strisce grafiche, mappe finitura/metallicità).",
+    "examples": [
+      "/static/temp/adidas/argentina04home/jersey_finish_24.png",
+      "/static/temp/adidas/argentina04home/jersey_normal_24.png",
+      "/static/temp/adidas/argentina04home/jersey_side_panels_24.png",
+      "/static/temp/adidas/argentina04home/jersey_sleeve_panels_24.png",
+      "/static/temp/adidas/argentina04home/collar_trim_24.png"
+    ],
+    "format": "image/png",
+    "android_target": "TextureEngine.kt (Compositing bitmap multi-layer con shader di color swap e blend)"
+  },
+  {
+    "category": "Typography_and_Number_Atlas",
+    "pattern": "/kit-creator/static/numbers/{font_slug}.png",
+    "description": "Texture atlas dei numeri (cifre da 0 a 9) da ritagliare e posizionare su maglia e pantaloncini.",
+    "examples": [
+      "/kit-creator/static/numbers/numbers_0_9_color.png"
+    ],
+    "format": "image/png",
+    "android_target": "KitModels.kt / TextureEngine.kt (UV Coordinate mapping e render testo squad)"
+  },
+  {
+    "category": "Brand_Logos_and_Previews",
+    "pattern": "/static/brands/{brand_name}.png",
+    "description": "Loghi vettoriali e raster dei produttori tecnici sportivi (sponsor tecnici).",
+    "examples": [
+      "/static/brands/adidas.png",
+      "/static/brands/preview/adidas.jpg"
+    ],
+    "format": "image/png / image/jpeg",
+    "android_target": "Coil Image Loader + Room PresetsData.kt"
+  },
+  {
+    "category": "Kit_Previews",
+    "pattern": "/static/previews/jpg/{preview_slug}.jpg",
+    "description": "Immagini di anteprima 2D per il carosello di selezione dei preset grafici.",
+    "examples": [
+      "/static/previews/jpg/adidas_argentina_2004_home.jpg"
+    ],
+    "format": "image/jpeg",
+    "android_target": "PresetsData.kt (Catalogo griglia template Compose)"
+  },
+  {
+    "category": "JavaScript_Application_Modules",
+    "pattern": "/kit-creator/dist/{module_name}.{hash}.js",
+    "description": "Moduli applicativi caricati per la gestione dell'editor.",
+    "examples": [
+      "/kit-creator/dist/script.e23iwr7h.js",
+      "/kit-creator/dist/three.gfa8n7hq.js",
+      "/kit-creator/dist/index.lwl7epwx.js",
+      "/kit-creator/dist/vendor.hdlasf24.js",
+      "/kit-creator/dist/EAFCKitCreator.cscu64c6.js",
+      "/kit-creator/dist/FIFA21KitCreator.cv845v0b.js",
+      "/kit-creator/dist/FifaDownloadModal.di2o1s6x.js",
+      "/kit-creator/dist/SavedKits.hrff6nxm.js",
+      "/kit-creator/dist/HotspotsEditor.d4650opc.js",
+      "/kit-creator/dist/freeformPath.fco301ts.js",
+      "/kit-creator/dist/Printing.k882p2dk.js",
+      "/kit-creator/dist/localStorage.kelp7spe.js"
+    ],
+    "format": "application/javascript",
+    "android_target": "Architettura MVVM (KitEditorViewModel.kt, TextureEngine.kt, Kit3DRenderer.kt)"
+  }
+]

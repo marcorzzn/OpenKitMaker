@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenKitMaker-Native</string>
+    <string name="app_offline_badge">Modalità Offline</string>
+    <string name="app_online_badge">Locale Attivo</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_catalog">Catalogo</string>
+    <string name="nav_editor">Editor Kit</string>
+    <string name="nav_saved">I Miei Kit</string>
+    <string name="nav_export">Esporta</string>
+    <string name="catalog_title">Catalogo Template</string>
+    <string name="editor_view_2d">Vista 2D</string>
+    <string name="editor_view_3d">Vista 3D</string>
+    <string name="editor_view_split">Vista Doppia</string>
+    <string name="export_option_png_title">Texture PNG 2048×2048</string>
+    <string name="export_option_zip_title">Archivio Completo (.ZIP)</string>
+    <string name="errors_storage_full">Spazio di archiviazione locale insufficiente per completare l\'operazione.</string>
+    <string name="errors_export_failed">Si è verificato un errore durante l\'esportazione del file. Riprova.</string>
+</resources>

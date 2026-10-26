@@ -1,0 +1,107 @@
+{
+  "app": {
+    "name": "OpenKitMaker",
+    "tagline": "Studio di Progettazione Grafica e Modellazione Kit 3D",
+    "offline_badge": "Modalità Offline",
+    "online_badge": "Connesso"
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Catalogo",
+    "editor": "Editor Kit",
+    "saved": "I Miei Kit",
+    "export": "Esporta",
+    "back": "Indietro",
+    "save": "Salva",
+    "close": "Chiudi"
+  },
+  "home": {
+    "title": "Crea la tua divisa sportiva",
+    "subtitle": "Crea, personalizza e visualizza in 3D con illuminazione fotorealistica",
+    "btn_new_kit": "Nuovo Kit da Template",
+    "recent_kits": "Bozze Recenti",
+    "no_recent_kits": "Nessun kit salvato al momento. Crea il tuo primo kit dal catalogo!",
+    "btn_all_kits": "Visualizza tutti i kit salvati"
+  },
+  "catalog": {
+    "title": "Catalogo Template",
+    "search_placeholder": "Cerca per stile, maglia o categoria...",
+    "category_all": "Tutti",
+    "category_home": "Casa",
+    "category_away": "Trasferta",
+    "category_third": "Terza",
+    "category_gk": "Portiere",
+    "category_special": "Speciali",
+    "btn_select": "Usa questo template"
+  },
+  "editor": {
+    "kit_name_placeholder": "Nome del Kit...",
+    "view_2d": "Vista 2D",
+    "view_3d": "Vista 3D",
+    "view_split": "Vista Doppia",
+    "components": {
+      "base": "Base",
+      "collar": "Colletto",
+      "sleeves": "Maniche",
+      "pattern": "Grafica",
+      "sponsor": "Sponsor",
+      "badge": "Stemma",
+      "name": "Nome",
+      "number": "Numero"
+    },
+    "layer": {
+      "title": "Livelli e Dettagli",
+      "add": "Aggiungi Livello",
+      "opacity": "Opacità",
+      "blend_mode": "Metodo Fusione",
+      "visibility": "Visibilità",
+      "delete": "Elimina Livello",
+      "move_up": "Sposta su",
+      "move_down": "Sposta giù"
+    },
+    "color": {
+      "title": "Selettore Colore",
+      "hex": "Codice HEX",
+      "recent": "Colori Recenti",
+      "presets": "Palette Consigliata"
+    },
+    "lighting": {
+      "studio": "Luce Studio",
+      "stadium": "Luce Stadio",
+      "reset_camera": "Centra Visuale"
+    }
+  },
+  "saved": {
+    "title": "I Miei Kit",
+    "count_singular": "1 kit salvato",
+    "count_plural": "{count} kit salvati",
+    "empty_state": "Nessun kit salvato in memoria locale.",
+    "btn_open": "Modifica",
+    "btn_duplicate": "Duplica",
+    "btn_rename": "Rinomina",
+    "btn_delete": "Elimina",
+    "confirm_delete_title": "Conferma eliminazione",
+    "confirm_delete_message": "Sei sicuro di voler eliminare definitivamente questo kit? L'azione è irreversibile."
+  },
+  "export": {
+    "title": "Esportazione Kit",
+    "option_png_title": "Texture PNG 2048×2048",
+    "option_png_desc": "Texture piana ad altissima definizione per motori di rendering ed editor esterni.",
+    "option_zip_title": "Archivio Completo (.ZIP)",
+    "option_zip_desc": "Include texture, minikit di anteprima e file manifest.json standard interoperabile.",
+    "btn_export_png": "Scarica PNG",
+    "btn_export_zip": "Scarica Archivio ZIP",
+    "progress_compositing": "Compositing texture 2D in corso...",
+    "progress_compressing": "Confezionamento archivio e checksum...",
+    "success_title": "Esportazione completata con successo!",
+    "success_message": "Il file è pronto ed è stato salvato nel tuo dispositivo."
+  },
+  "errors": {
+    "storage_full": "Spazio di archiviazione locale insufficiente per completare l'operazione.",
+    "export_failed": "Si è verificato un errore durante l'esportazione del file. Riprova.",
+    "texture_invalid": "Uno o più livelli grafici contengono dati non validi.",
+    "template_load_failed": "Impossibile caricare il template selezionato. Verifica la disponibilità offline.",
+    "gpu_context_lost": "Il motore grafico 3D ha perso il contesto GPU. Riavvio in corso...",
+    "permission_denied": "Permesso di scrittura su memoria negato. Abilita i permessi nelle impostazioni di sistema."
+  }
+}

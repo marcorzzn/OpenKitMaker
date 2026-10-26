@@ -1,0 +1,38 @@
+{
+  "environment": {
+    "session_type": "anonymous_temporary_profile",
+    "cdp_protocol": "1.3",
+    "auth_state": "none (no credentials, no personal data retained)",
+    "browser": "Chrome/156.0.8078.47",
+    "rea_provider": "REA MCP Server (Browser CDP Provider, internal id: rea-cdp-browser v2)"
+  },
+  "artifacts": {
+    "notebook_audit_fifakitcreator.ipynb": {
+      "sha256": "41F0AE7EB2F0A805EFA7FF8E91FA666BAB0497E97F6D28CFDD5A6CFA428FF036",
+      "size_bytes": 16600
+    },
+    "fifakitcreator_evidence_bundle.rea.zip": {
+      "sha256": "E0BA9E23727B993E931017EDF9686B08BB810D75353CC791851449C3A32F1073",
+      "size_bytes": 1104448
+    },
+    "resources_analysis.csv": {
+      "sha256": "116C4198BBC7EB5C3A75F58C16BCE96BEE19A624210354741C54C1931C7B03EF",
+      "size_bytes": 5090
+    },
+    "audit_performance_report.md": {
+      "sha256": "20E42974342BFD758A24F7A2CE73A9A36BC3ECD6115B55F87C43B87B7BBF6FAF",
+      "size_bytes": 12506
+    },
+    "android_porting_matrix.md": {
+      "sha256": "7802D6C07E2601E516755390AF2FCA00AA60656B4572D42948AF082C59C2F753",
+      "size_bytes": 6825
+    },
+    "architecture_endpoints.json": {
+      "sha256": "A8466A232665035A7DCE8DF3E6A127B7B43A4AC6A4EFEA1F9832FA1DD294A6CC",
+      "size_bytes": 3523
+    }
+  },
+  "audit_date": "2026-10-26T18:15:00Z",
+  "audit_target": "https://fifakitcreator.com/",
+  "notebook_reproducibility_note": "L'hash SHA-256 di notebook_audit_fifakitcreator.ipynb riflette il file nello stato di consegna congelato; un'eventuale riesecuzione con salvataggio in ambiente Jupyter/Colab ne aggiorna i metadati e i buffer di output interni, senza alterare la deterministica riproducibilità degli altri cinque artefatti generati."
+}
