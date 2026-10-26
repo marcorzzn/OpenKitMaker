@@ -5,16 +5,11 @@ on:
     branches:
       - main
       - fork/native-c
-    paths:
-      - 'native/**'
-      - '.github/workflows/**'
   pull_request:
     branches:
       - main
       - fork/native-c
-    paths:
-      - 'native/**'
-      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   build:
