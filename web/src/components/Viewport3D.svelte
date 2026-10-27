@@ -23,12 +23,13 @@
   let fpsTimer: ReturnType<typeof setInterval> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
-  onMount(async () => {
+  async function initEngine() {
+    if (engine || !mountContainer) return;
     try {
       isLoadingEngine = true;
-      // Dynamic lazy import so Three.js + KTX2Loader + DRACOLoader are excluded from initial bundle (<= 80 KB gzip)
+      loadError = null;
       const module3d = await import('../lib/engine3d');
-      if (!mountContainer || !sourceCanvas) return;
+      if (!mountContainer) return;
 
       engine = module3d.createKit3DEngine(
         mountContainer,
@@ -43,6 +44,11 @@
       });
       resizeObserver.observe(mountContainer);
 
+      // Force an initial resize once DOM layout finishes
+      requestAnimationFrame(() => {
+        engine?.resize();
+      });
+
       fpsTimer = setInterval(() => {
         if (engine) {
           fpsValue = engine.getFps();
@@ -52,21 +58,30 @@
       loadError = err?.message || 'Errore inizializzazione WebGL2.';
       isLoadingEngine = false;
     }
+  }
+
+  onMount(() => {
+    initEngine();
   });
 
   onDestroy(() => {
     if (fpsTimer) clearInterval(fpsTimer);
     resizeObserver?.disconnect();
     engine?.dispose();
+    engine = null;
   });
 
   // Reactively push 2048x2048 Canvas updates to 3D PBR texture
   $effect(() => {
+    if (!engine && mountContainer) {
+      initEngine();
+    }
     const _rev = textureRevision;
     if (engine && sourceCanvas && _rev >= 0) {
       engine.updateCanvasTexture(sourceCanvas);
     }
   });
+
 
   function switchLighting(preset: LightingPreset) {
     studio.lightingPreset = preset;

@@ -223,56 +223,60 @@
             </button>
           </div>
 
-          <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
             {#each [...studio.activeKit.layers].sort((a, b) => b.zIndex - a.zIndex) as layer (layer.id)}
               {@const isCurrent = studio.selectedLayer?.id === layer.id}
               <div
-                class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border transition-colors {isCurrent
-                  ? 'bg-[#253146] border-[#00C49F]'
+                class="flex flex-col gap-2.5 p-4 rounded-xl border shadow-sm transition-all {isCurrent
+                  ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/30'
                   : 'bg-[#0F141C] border-[#2E3D56] hover:border-[#64748B]'}"
               >
-                <button
-                  type="button"
-                  onclick={() => (studio.selectedLayerId = layer.id)}
-                  class="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
-                >
-                  <span
-                    class="w-3.5 h-3.5 rounded-xs border border-white/30 shrink-0"
-                    style="background-color: {layer.color};"
-                  ></span>
-                  <div class="min-w-0 flex-1">
-                    <div class="text-xs font-semibold text-white truncate">{layer.name}</div>
-                    <div class="text-[11px] text-[#94A3B8] font-mono-tabular">
-                      {i18n.editor.component_rail[layer.type]} · z:{layer.zIndex} · {Math.round(layer.opacity * 100)}%
+                <div class="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onclick={() => (studio.selectedLayerId = layer.id)}
+                    class="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
+                  >
+                    <span
+                      class="w-4 h-4 rounded-full border border-white/40 shrink-0 shadow-inner"
+                      style="background-color: {layer.color};"
+                    ></span>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-semibold text-white truncate">{layer.name}</div>
+                      <div class="text-[11px] text-[#94A3B8] font-mono-tabular">
+                        {i18n.editor.component_rail[layer.type]} · z:{layer.zIndex} · {Math.round(layer.opacity * 100)}%
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
 
-                <div class="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onclick={() => studio.toggleLayerVisibility(layer.id)}
-                    class="px-1.5 py-1 text-[11px] font-mono-tabular rounded bg-[#1A2230] text-[#94A3B8] hover:text-white cursor-pointer"
-                    title={layer.visible ? 'Nascondi livello' : 'Mostra livello'}
-                  >
-                    {layer.visible ? 'ON' : 'OFF'}
-                  </button>
-                  <button
-                    type="button"
-                    onclick={() => studio.moveLayerZIndex(layer.id, 'UP')}
-                    class="px-1.5 py-1 text-xs rounded bg-[#1A2230] text-[#94A3B8] hover:text-white cursor-pointer"
-                    title="Sposta su (z-index +)"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onclick={() => studio.moveLayerZIndex(layer.id, 'DOWN')}
-                    class="px-1.5 py-1 text-xs rounded bg-[#1A2230] text-[#94A3B8] hover:text-white cursor-pointer"
-                    title="Sposta giù (z-index -)"
-                  >
-                    ↓
-                  </button>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onclick={() => studio.toggleLayerVisibility(layer.id)}
+                      class="px-2 py-1 text-[11px] font-mono-tabular font-semibold rounded-md transition-colors {layer.visible
+                        ? 'bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40'
+                        : 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40'} cursor-pointer"
+                      title={layer.visible ? 'Nascondi livello' : 'Mostra livello'}
+                    >
+                      {layer.visible ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => studio.moveLayerZIndex(layer.id, 'UP')}
+                      class="w-7 h-7 flex items-center justify-center rounded-md bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
+                      title="Sposta su (z-index +)"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => studio.moveLayerZIndex(layer.id, 'DOWN')}
+                      class="w-7 h-7 flex items-center justify-center rounded-md bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
+                      title="Sposta giù (z-index -)"
+                    >
+                      ↓
+                    </button>
+                  </div>
                 </div>
               </div>
             {/each}

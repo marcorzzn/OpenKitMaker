@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EDITOR / SCR-EXPORT / FUN-COMPOSITE-2D / FUN-EDIT-COLOR / FUN-MANAGE-LAYERS
+// Implements: SCR-EDITOR / SCR-EXPORT / FUN-COMPOSITE-2D / FUN-EDIT-COLOR / FUN-MANAGE-LAYERS
 package com.openkitmaker.android.render
 
 import android.graphics.Bitmap
@@ -244,17 +244,80 @@ object TextureEngine {
         cuffInt: Int,
         paint: Paint
     ) {
-        // Bottom UV Quadrant [y: 0.72..0.96] maps left and right sleeves
+        val yTop = h * (1360f / 2048f) // 0.664 h
+        val sleeveLeftW = w * (680f / 2048f) // 0.332 w
+        val sleeveRightX = w * 0.50f
+        val sleeveRightW = w * (680f / 2048f)
+        val cuffH = h * 0.045f // ~92px on 2048x2048
+
+        // 1. Sleeve Base Fills (Left: [0..0.332w, 0.664h..h], Right: [0.50..0.832w, 0.664h..h])
         paint.style = Paint.Style.FILL
         paint.color = primaryInt
-        canvas.drawRect(w * 0.04f, h * 0.74f, w * 0.48f, h * 0.95f, paint)
-        canvas.drawRect(w * 0.52f, h * 0.74f, w * 0.96f, h * 0.95f, paint)
+        canvas.drawRect(0f, yTop, sleeveLeftW, h, paint)
+        canvas.drawRect(sleeveRightX, yTop, sleeveRightX + sleeveRightW, h, paint)
 
-        // Contrasting sleeve cuffs
+        // 2. Contrasting Sleeve Cuffs & Accent Stripe (Secondary Color)
         paint.color = cuffInt
-        canvas.drawRect(w * 0.04f, h * 0.91f, w * 0.48f, h * 0.95f, paint)
-        canvas.drawRect(w * 0.52f, h * 0.91f, w * 0.96f, h * 0.95f, paint)
+        canvas.drawRect(0f, h - cuffH, sleeveLeftW, h, paint)
+        canvas.drawRect(sleeveRightX, h - cuffH, sleeveRightX + sleeveRightW, h, paint)
+
+        // Subtle accent pinstripe above cuffs
+        val stripeH = (h * 0.006f).coerceAtLeast(4f)
+        val stripeGap = (h * 0.010f).coerceAtLeast(8f)
+        canvas.drawRect(0f, h - cuffH - stripeGap - stripeH, sleeveLeftW, h - cuffH - stripeGap, paint)
+        canvas.drawRect(sleeveRightX, h - cuffH - stripeGap - stripeH, sleeveRightX + sleeveRightW, h - cuffH - stripeGap, paint)
+
+        // 3. Raglan Shoulder Wedges on Front & Back Torso Panels
+        val shoulderW = w * (250f / 2048f)
+        val shoulderH = h * (320f / 2048f)
+        paint.color = primaryInt
+
+        // Front Panel: Left & Right shoulder cuts
+        val frontLeftShoulder = Path().apply {
+            moveTo(0f, 0f)
+            lineTo(shoulderW, 0f)
+            lineTo(0f, shoulderH)
+            close()
+        }
+        canvas.drawPath(frontLeftShoulder, paint)
+
+        val frontRightShoulder = Path().apply {
+            moveTo(w * 0.50f, 0f)
+            lineTo(w * 0.50f - shoulderW, 0f)
+            lineTo(w * 0.50f, shoulderH)
+            close()
+        }
+        canvas.drawPath(frontRightShoulder, paint)
+
+        // Back Panel: Left & Right shoulder cuts
+        val backLeftShoulder = Path().apply {
+            moveTo(w * 0.50f, 0f)
+            lineTo(w * 0.50f + shoulderW, 0f)
+            lineTo(w * 0.50f, shoulderH)
+            close()
+        }
+        canvas.drawPath(backLeftShoulder, paint)
+
+        val backRightShoulder = Path().apply {
+            moveTo(w, 0f)
+            lineTo(w - shoulderW, 0f)
+            lineTo(w, shoulderH)
+            close()
+        }
+        canvas.drawPath(backRightShoulder, paint)
+
+        // Raglan seam accent stroke in secondary color
+        val seamStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = (w * 0.005f).coerceAtLeast(3f)
+            color = cuffInt
+        }
+        canvas.drawLine(shoulderW, 0f, 0f, shoulderH, seamStrokePaint)
+        canvas.drawLine(w * 0.50f - shoulderW, 0f, w * 0.50f, shoulderH, seamStrokePaint)
+        canvas.drawLine(w * 0.50f + shoulderW, 0f, w * 0.50f, shoulderH, seamStrokePaint)
+        canvas.drawLine(w - shoulderW, 0f, w, shoulderH, seamStrokePaint)
     }
+
 
     private fun renderCollar(
         canvas: Canvas,
@@ -500,12 +563,30 @@ object TextureEngine {
         val seamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f
-            color = Color.argb(28, 255, 255, 255)
+            color = Color.argb(40, 255, 255, 255)
         }
-        // Subtle technical stitching lines separating front torso, back torso, and sleeves
-        canvas.drawLine(w * 0.50f, 0f, w * 0.50f, h * 0.72f, seamPaint)
-        canvas.drawLine(0f, h * 0.72f, w, h * 0.72f, seamPaint)
+        val yTop = h * (1360f / 2048f)
+        val sleeveLeftW = w * (680f / 2048f)
+        val collarW = w * (344f / 2048f)
+        val sleeveRightX = w * 0.50f
+        val sleeveRightW = w * (680f / 2048f)
+
+        // Horizontal division between Torso panels and Lower components (Sleeves, Collar, Trim)
+        canvas.drawLine(0f, yTop, w, yTop, seamPaint)
+        // Vertical division between Front and Back Torso
+        canvas.drawLine(w * 0.50f, 0f, w * 0.50f, yTop, seamPaint)
+
+        // Lower zone divisions
+        canvas.drawLine(sleeveLeftW, yTop, sleeveLeftW, h, seamPaint)
+        canvas.drawLine(sleeveLeftW + collarW, yTop, sleeveLeftW + collarW, h, seamPaint)
+        canvas.drawLine(sleeveRightX + sleeveRightW, yTop, sleeveRightX + sleeveRightW, h, seamPaint)
+
+        // Sleeve cuff guidelines
+        val cuffH = h * 0.045f
+        canvas.drawLine(0f, h - cuffH, sleeveLeftW, h - cuffH, seamPaint)
+        canvas.drawLine(sleeveRightX, h - cuffH, sleeveRightX + sleeveRightW, h - cuffH, seamPaint)
     }
+
 
     fun parseHexColor(hex: String, fallback: Int): Int =
         runCatching { Color.parseColor(hex) }.getOrDefault(fallback)

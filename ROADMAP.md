@@ -34,6 +34,7 @@ timeline
 - [x] Sviluppo Android Nativo con Jetpack Compose Material 3 e Google Filament PBR GPU.
 - [x] Standard di esportazione interoperabile `kit_<id>.zip` con firma SHA-256.
 - [x] Pubblicazione repository open-source con licenza MIT.
+- [x] Fase 1: Core Bug Fixing (Riparazione 3D WebGL/Filament, UV mapping maniche 2D/3D, Riprogettazione UI Material 3 con Scaffold & NavigationBar).
 - [ ] Messa online della PWA su dominio personalizzato (es. `openkitmaker.dev` o `openkitmaker.com` via Vercel).
 - [ ] Pubblicazione su Google Play Store (`com.marcorzzano.openkitmaker`).
 - [ ] Campagna di lancio su Reddit (r/footballkits, r/ConceptFootball), Twitter/X e community Discord.

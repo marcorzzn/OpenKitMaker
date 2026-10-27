@@ -139,12 +139,14 @@ fun Kit3DRenderer(
         val camY = (radius * sin(pitchRad)).toFloat()
         val camZ = (radius * cos(pitchRad) * cos(yawRad)).toFloat()
 
+        // Aggiorna posizione della camera orbitale
         cameraNode.position = Position(camX, camY, camZ)
         cameraNode.lookAt(Position(0f, 0f, 0f))
 
-        // Riutilizzo di cachedTransformMatrix senza allocare nuovi array sul bridge JNI
+        // Mantiene il modello perfettamente centrato e visibile mantenendo la scala corretta nella matrice pre-allocata
         Matrix.setIdentityM(cachedTransformMatrix, 0)
-        Matrix.rotateM(cachedTransformMatrix, 0, yawDegrees, 0f, 1f, 0f)
+        Matrix.translateM(cachedTransformMatrix, 0, 0f, 0f, 0f)
+        Matrix.scaleM(cachedTransformMatrix, 0, 1.55f, 1.55f, 1.55f)
         val tm = engine.transformManager
         childNodes.firstOrNull()?.let { node ->
             val inst = tm.getInstance(node.entity)

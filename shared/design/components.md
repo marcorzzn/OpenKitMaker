@@ -20,26 +20,41 @@ I componenti devono presentare la stessa struttura anatomica, gli stessi stati i
   - Box di visualizzazione colore attivo con codice HEX editabile.
   - Griglia a 8 tessere circolari per i colori recenti (tap rapido per applicazione).
 
-### `LayerListItem`
+### `LayerListItem` / `LayerCard`
 - **Anatomia**:
+  - Contenitore Card con raggio `radii.md` (8px..16px), elevation token `elevation.level1`, background `surface` o `surfaceElevated`.
+  - Padding interno standardizzato a `spacing.lg` (16dp / 16px) e spaziatura verticale `12dp..16dp`.
   - Maniglia di trascinamento (drag handle per riordinamento z-index).
-  - Icona tipologia componente (base, strisce, sponsor, numero).
-  - Label con nome del layer.
+  - Icona tipologia componente (base, trama, colletto, maniche, sponsor, stemma, nome, numero).
+  - Label con nome del layer ed etichetta informativa (opacità, blend mode).
   - Indicatore cromatico (cerchio colorato con il colore assegnato).
   - Toggle rapido visibilità (icona occhio aperto/chiuso).
   - Pulsante menu contestuale / opzioni avanzate (opacità, blend mode, elimina).
-- **Stati**: Normale, Selezionato (bordo primario 2px), Trascinamento attivo.
+- **Stati**: Normale, Selezionato (bordo primario 2px `primary`), Trascinamento attivo.
 
 ---
 
 ## 2. Componenti di Dominio Complessi
 
-### `TopNavBar`
+### `AppScaffold` & `ScreenScaffold`
+- **Architettura Standard per Schermate**:
+  - `topBar`: `TopAppBar` Material 3 (titolo schermata, azioni principali come *Salva* e *Preset Luce*).
+  - `bottomBar`: `BottomAppBar` / `NavigationBar` ergonomica posta in basso, raggiungibile con il pollice su mobile (Colore, Livelli, Vista, Esporta).
+  - `content`: Area flessibile e responsiva contenente il viewport (2D / 3D) e pannelli ispettore strutturati in `Card`.
+
+### `TopNavBar` / `TopAppBar`
 - Barra di intestazione con:
   - Tasto indietro/chiudi.
-  - Titolo kit modificabile con click diretto.
-  - Gruppo pulsanti azione: *Salva Bozza*, *Vista (2D/3D/Split)*, *Esporta*.
-- Altezza: 56dp / 56px fissa con `surface` background e bordo inferiore sottile (`surfaceBorder`).
+  - Titolo kit modificabile con click diretto o input rapido.
+  - Gruppo pulsanti azione: *Salva Bozza*, *Preset Luce (Studio/Stadio)*, *Modalità Vista (2D/3D/Split)*.
+- Altezza: 64dp fissa con `surface` background e bordo inferiore sottile (`surfaceBorder`).
+
+### `BottomEditorBar` / `NavigationBar`
+- Barra di controllo inferiore ancorata al fondo dello schermo (thumb-friendly per smartphone):
+  - Scheda/Azione **Vista**: Toggle rapido 2D / 3D / Split.
+  - Scheda/Azione **Colore**: Pannello / Sheet rapido per selezione HSV e palette colori recenti.
+  - Scheda/Azione **Livelli**: Pannello gestore stack livelli e proprietà.
+  - Scheda/Azione **Esporta**: Azione diretta per salvataggio e navigazione a esportazione.
 
 ### `Viewport3DContainer`
 - Area contenitore per il rendering 3D hardware:
@@ -50,15 +65,23 @@ I componenti devono presentare la stessa struttura anatomica, gli stessi stati i
     - Toggle rotazione automatica (auto-spin).
   - Sovrimpressione di feedback per framerate (visibile solo in modalità debug/benchmark).
 
-### `Texture2DView`
+### `Texture2DView` & UV Mapping Maniche (Sleeves)
 - Area di visualizzazione a schermo intero o split della texture piana compositata:
-  - Griglia UV semi-trasparente opzionale per allineamento.
-  - Funzione pinch-to-zoom e pan per ispezionare colletti e dettagli dei loghi ad alta risoluzione.
+  - Griglia UV semi-trasparente opzionale per allineamento sartoriale.
+  - Funzione pinch-to-zoom e pan per ispezionare dettagli ad alta risoluzione.
+  - **Mappatura Maniche**:
+    - Manica Sinistra: `x: 0..680`, `y: 1360..2048` (rapporto normalizzato `0.0..0.332 w`, `0.664..1.0 h`).
+    - Manica Destra: `x: 1024..1704`, `y: 1360..2048` (rapporto normalizzato `0.50..0.832 w`, `0.664..1.0 h`).
+    - Colletto: `x: 680..1024`, `y: 1360..2048` (`0.332..0.50 w`, `0.664..1.0 h`).
+    - Bordi e Trim: `x: 1704..2048`, `y: 1360..2048` (`0.832..1.0 w`, `0.664..1.0 h`).
+    - Inserti Raglan: Spalle anteriori e posteriori `x: 0..250` e `x: w-250..w`, `y: 0..320`.
+    - Bordi polsino (cuffs): Fascia inferiore con colore secondario `secondaryColor`.
 
 ### `MinikitCard`
 - Card usata in `SCR-HOME` e `SCR-SAVED`:
   - Contenitore con `surface` background e raggio `radii.lg` (16px).
-  - Riquadro quadrato per la preview del minikit 2D.
+  - Riquadro quadrato per la preview del minikit 2D con maniche e colletto visibili.
   - Titolo del kit in grassetto (`fontWeight.bold`).
   - Data di salvataggio in testo secondario (`textSecondary`).
   - Barra azioni inferiore con pulsanti compatti: Modifica, Duplica, Cancella.
+

@@ -763,14 +763,31 @@ export function drawUvPatternOverlay(
     ctx.stroke();
   }
 
+  // Tailored sleeve contour outlines and cuff guide lines
+  for (const s of [UV_REGIONS.sleeveLeft, UV_REGIONS.sleeveRight]) {
+    ctx.beginPath();
+    ctx.moveTo(s.x + 80, s.y + 40);
+    ctx.lineTo(s.x + s.w - 80, s.y + 40);
+    ctx.lineTo(s.x + s.w - 36, s.y + s.h - 40);
+    ctx.lineTo(s.x + 36, s.y + s.h - 40);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Cuff guideline
+    ctx.beginPath();
+    ctx.moveTo(s.x + 40, s.y + s.h - 90);
+    ctx.lineTo(s.x + s.w - 40, s.y + s.h - 90);
+    ctx.stroke();
+  }
+
   // Labels
   ctx.font = '600 28px "JetBrains Mono", monospace';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
   ctx.fillText('UV: TORSO FRONTE (0..1024)', 36, 52);
   ctx.fillText('UV: TORSO RETRO (1024..2048)', 1060, 52);
-  ctx.fillText('UV: MANICA SX', 36, 1412);
+  ctx.fillText('UV: MANICA SX (0..680, 1360..2048)', 36, 1412);
   ctx.fillText('UV: COLLETTO', 704, 1412);
-  ctx.fillText('UV: MANICA DX', 1060, 1412);
+  ctx.fillText('UV: MANICA DX (1024..1704, 1360..2048)', 1060, 1412);
   ctx.fillText('UV: BORDI/TRIM', 1724, 1412);
 
   ctx.restore();
@@ -939,29 +956,38 @@ export function renderMinikitPreview512(
       304
     );
 
-    // Draw Left & Right sleeves from sleeve UV islands
+    // Draw Left & Right sleeves from sleeve UV islands with matching arm angles
+    ctx.save();
+    ctx.translate(-120, -80);
+    ctx.rotate(0.52);
     ctx.drawImage(
       sourceTexture2048 as CanvasImageSource,
       UV_REGIONS.sleeveLeft.x,
       UV_REGIONS.sleeveLeft.y,
       UV_REGIONS.sleeveLeft.w,
       UV_REGIONS.sleeveLeft.h,
-      -158,
-      -142,
-      70,
-      122
+      -36,
+      -56,
+      74,
+      126
     );
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(120, -80);
+    ctx.rotate(-0.52);
     ctx.drawImage(
       sourceTexture2048 as CanvasImageSource,
       UV_REGIONS.sleeveRight.x,
       UV_REGIONS.sleeveRight.y,
       UV_REGIONS.sleeveRight.w,
       UV_REGIONS.sleeveRight.h,
-      88,
-      -142,
-      70,
-      122
+      -38,
+      -56,
+      74,
+      126
     );
+    ctx.restore();
 
     // Subtle 3D shading overlay on silhouette
     const shade = ctx.createLinearGradient(-140, 0, 140, 0);

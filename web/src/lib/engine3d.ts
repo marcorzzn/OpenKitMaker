@@ -243,21 +243,42 @@ function buildTailoredJerseyMeshGroup(
  * FUN-PREVIEW-3D: Initializes the WebGL2 Three.js PBR viewport with KTX2Loader & DRACOLoader,
  * constrained orbital camera, Studio/Stadium lighting presets, and real-time 60 FPS loop.
  */
+function createFallbackCanvas(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const ctx = c.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#0F52BA';
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = '#09111E';
+    ctx.fillRect(0, 340, 512, 172);
+  }
+  return c;
+}
+
+/**
+ * FUN-PREVIEW-3D: Initializes the WebGL2 Three.js PBR viewport with KTX2Loader & DRACOLoader,
+ * constrained orbital camera, Studio/Stadium lighting presets, and real-time 60 FPS loop.
+ */
 export function createKit3DEngine(
   container: HTMLElement,
-  sourceCanvas2048: HTMLCanvasElement,
+  sourceCanvas2048: HTMLCanvasElement | null,
   initialLighting: LightingPreset = 'studio'
 ): Kit3DEngineController {
   // Detect software WebGL per Three.js skill guidelines
   const isSoftwareGl = (() => {
-    const probeCanvas = document.createElement('canvas');
-    const gl = probeCanvas.getContext('webgl2');
-    if (!gl) return true;
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-    const gpu = String(gl.getParameter(param));
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+    try {
+      const probeCanvas = document.createElement('canvas');
+      const gl = probeCanvas.getContext('webgl2') || probeCanvas.getContext('webgl');
+      if (!gl) return true;
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+      const gpu = String(gl.getParameter(param));
+      return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+    } catch {
+      return false;
+    }
   })();
 
   const renderer = new THREE.WebGLRenderer({
@@ -268,27 +289,43 @@ export function createKit3DEngine(
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
-  renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = !isSoftwareGl;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  const width = Math.max(300, container.clientWidth);
-  const height = Math.max(300, container.clientHeight);
-  renderer.setSize(width, height);
+  const getW = () => Math.max(300, container.clientWidth || container.parentElement?.clientWidth || 400);
+  const getH = () => Math.max(300, container.clientHeight || container.parentElement?.clientHeight || 460);
+
+  const initialW = getW();
+  const initialH = getH();
+  renderer.setSize(initialW, initialH, false);
+  renderer.domElement.style.width = '100%';
+  renderer.domElement.style.height = '100%';
+  renderer.domElement.style.display = 'block';
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
 
-  // Initialize KTX2Loader and DRACOLoader as required by the technical stack contract
-  const ktx2Loader = new KTX2Loader();
-  ktx2Loader.setTranscoderPath('/basis/');
-  ktx2Loader.detectSupport(renderer);
+  // Safe loader initialization
+  let ktx2Loader: KTX2Loader | null = null;
+  let dracoLoader: DRACOLoader | null = null;
+  try {
+    ktx2Loader = new KTX2Loader();
+    ktx2Loader.setTranscoderPath('/basis/');
+    ktx2Loader.detectSupport(renderer);
+  } catch {
+    ktx2Loader = null;
+  }
 
-  const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath('/draco/');
+  try {
+    dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+  } catch {
+    dracoLoader = null;
+  }
 
   const gltfLoader = new GLTFLoader();
-  gltfLoader.setKTX2Loader(ktx2Loader);
-  gltfLoader.setDRACOLoader(dracoLoader);
+  if (ktx2Loader) gltfLoader.setKTX2Loader(ktx2Loader);
+  if (dracoLoader) gltfLoader.setDRACOLoader(dracoLoader);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#0F141C');
@@ -298,23 +335,24 @@ export function createKit3DEngine(
   scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
   pmremGenerator.dispose();
 
-  const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
-  camera.position.set(0, 0.25, 4.9);
+  const camera = new THREE.PerspectiveCamera(38, initialW / initialH, 0.1, 50);
+  camera.position.set(0, 0.25, 4.6);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.05, 0);
-  controls.enableDamping = !isSoftwareGl;
+  controls.enableDamping = true;
   controls.dampingFactor = 0.07;
   controls.enablePan = false;
-  controls.minDistance = 2.6;
+  controls.minDistance = 2.4;
   controls.maxDistance = 7.5;
   // Constrained pitch as specified in SCR-EDITOR / FUN-PREVIEW-3D
   controls.minPolarAngle = Math.PI * 0.22;
   controls.maxPolarAngle = Math.PI * 0.75;
   controls.update();
 
-  // Dynamic 2048x2048 CanvasTexture bound to the 2D compositor
-  const kitTexture = new THREE.CanvasTexture(sourceCanvas2048);
+  // Dynamic 2048x2048 CanvasTexture bound to the 2D compositor (with fallback)
+  const effectiveCanvas = sourceCanvas2048 || createFallbackCanvas();
+  const kitTexture = new THREE.CanvasTexture(effectiveCanvas);
   kitTexture.colorSpace = THREE.SRGBColorSpace;
   kitTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
   kitTexture.needsUpdate = true;
@@ -353,11 +391,14 @@ export function createKit3DEngine(
   shadowPlane.receiveShadow = true;
   scene.add(shadowPlane);
 
-  // Studio & Stadium Lighting Rig (calibrated to tokens.json: studio 6500K/1.2, stadium 5400K/1.8)
+  // Ambient & Multi-directional lighting rig ensuring model is NEVER black or in complete darkness
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+  scene.add(ambientLight);
+
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1a2230, 0.65);
   scene.add(hemiLight);
 
-  const keyLight = new THREE.DirectionalLight(kelvinToColor(6500), 1.2);
+  const keyLight = new THREE.DirectionalLight(kelvinToColor(6500), 1.3);
   keyLight.position.set(3.2, 4.5, 4.2);
   keyLight.castShadow = !isSoftwareGl;
   keyLight.shadow.mapSize.width = 1024;
@@ -366,38 +407,37 @@ export function createKit3DEngine(
   keyLight.shadow.normalBias = 0.02;
   scene.add(keyLight);
 
-  const fillLight = new THREE.DirectionalLight(0x94a3b8, 0.55);
+  const fillLight = new THREE.DirectionalLight(0x94a3b8, 0.65);
   fillLight.position.set(-3.5, 2.0, 2.5);
   scene.add(fillLight);
 
-  const rimLight = new THREE.DirectionalLight(0x00c49f, 0.75);
+  const rimLight = new THREE.DirectionalLight(0x00c49f, 0.85);
   rimLight.position.set(0, 3.2, -4.0);
   scene.add(rimLight);
 
   const applyLightingPreset = (preset: LightingPreset) => {
     if (preset === 'stadium') {
-      // tokens.json: stadium { intensity: 1.8, colorTemp: 5400 }
       keyLight.color.copy(kelvinToColor(5400));
       keyLight.intensity = 1.8;
       rimLight.color.set('#38BDF8');
       rimLight.intensity = 1.25;
       hemiLight.intensity = 0.85;
+      ambientLight.intensity = 0.95;
       scene.background = new THREE.Color('#090E17');
     } else {
-      // tokens.json: studio { intensity: 1.2, colorTemp: 6500 }
       keyLight.color.copy(kelvinToColor(6500));
-      keyLight.intensity = 1.2;
+      keyLight.intensity = 1.3;
       rimLight.color.set('#00C49F');
-      rimLight.intensity = 0.65;
+      rimLight.intensity = 0.75;
       hemiLight.intensity = 0.65;
+      ambientLight.intensity = 0.85;
       scene.background = new THREE.Color('#0F141C');
     }
-    requestRender();
   };
 
   applyLightingPreset(initialLighting);
 
-  // Camera smooth target transition
+  // Smooth camera transitions and animation loop
   let targetCamPos: THREE.Vector3 | null = null;
   controls.addEventListener('start', () => {
     targetCamPos = null;
@@ -407,94 +447,47 @@ export function createKit3DEngine(
   let currentFps = 60;
   let frameCount = 0;
   let lastFpsStamp = performance.now();
-  let frameId = 0;
+  let animFrameId = 0;
   let disposed = false;
 
   const clock = new THREE.Clock();
 
-  function afterDraw(cb: () => void) {
-    const gl = renderer.getContext() as WebGL2RenderingContext;
-    const sync = gl.fenceSync ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
-    gl.flush();
-    if (!sync) {
-      frameId = window.setTimeout(cb, 80);
-      return;
-    }
-    const poll = () => {
-      if (disposed) return;
-      const state = gl.getSyncParameter(sync, gl.SYNC_STATUS);
-      if (state === gl.UNSIGNALED) {
-        frameId = window.setTimeout(poll, 5);
-      } else {
-        gl.deleteSync(sync);
-        frameId = window.setTimeout(cb, 80);
-      }
-    };
-    frameId = window.setTimeout(poll, 5);
-  }
-
-  let renderBusy = false;
-  let renderDirty = false;
-
-  function requestRender() {
+  function animateLoop(now: number) {
     if (disposed) return;
-    if (renderBusy) {
-      renderDirty = true;
-      return;
+    animFrameId = requestAnimationFrame(animateLoop);
+
+    const dt = Math.min(clock.getDelta(), 0.1);
+    frameCount++;
+    if (now - lastFpsStamp >= 500) {
+      currentFps = Math.min(60, Math.round((frameCount * 1000) / (now - lastFpsStamp)));
+      frameCount = 0;
+      lastFpsStamp = now;
     }
-    renderBusy = true;
-    frameId = requestAnimationFrame((now) => {
-      if (disposed) return;
-      renderDirty = false;
 
-      const dt = Math.min(clock.getDelta(), 0.1);
-      frameCount++;
-      if (now - lastFpsStamp >= 500) {
-        currentFps = Math.min(60, Math.round((frameCount * 1000) / (now - lastFpsStamp)));
-        frameCount = 0;
-        lastFpsStamp = now;
+    if (autoRotate) {
+      jerseyGroup.rotation.y += dt * 0.65;
+    }
+
+    if (targetCamPos) {
+      camera.position.lerp(targetCamPos, 1 - Math.exp(-8 * dt));
+      if (camera.position.distanceTo(targetCamPos) < 0.02) {
+        targetCamPos = null;
       }
+    }
 
-      if (autoRotate) {
-        jerseyGroup.rotation.y += dt * 0.65;
-        renderDirty = true;
-      }
-
-      if (targetCamPos) {
-        camera.position.lerp(targetCamPos, 1 - Math.exp(-8 * dt));
-        if (camera.position.distanceTo(targetCamPos) < 0.02) {
-          targetCamPos = null;
-        } else {
-          renderDirty = true;
-        }
-      }
-
-      if (controls.update()) {
-        renderDirty = true;
-      }
-
-      renderer.render(scene, camera);
-
-      const done = () => {
-        renderBusy = false;
-        if (renderDirty && !disposed) requestRender();
-      };
-
-      if (isSoftwareGl) afterDraw(done);
-      else done();
-    });
+    controls.update();
+    renderer.render(scene, camera);
   }
 
-  controls.addEventListener('change', requestRender);
-  requestRender();
+  animFrameId = requestAnimationFrame(animateLoop);
 
   return {
     updateCanvasTexture(newCanvas: HTMLCanvasElement) {
+      if (!newCanvas) return;
       if (kitTexture.image !== newCanvas) {
         kitTexture.image = newCanvas;
       }
       kitTexture.needsUpdate = true;
-      requestRender();
     },
     setLightingPreset(preset: LightingPreset) {
       applyLightingPreset(preset);
@@ -514,43 +507,38 @@ export function createKit3DEngine(
         kitMaterial.sheen = 0.65;
       }
       kitMaterial.needsUpdate = true;
-      requestRender();
     },
     setAutoRotate(enabled: boolean) {
       autoRotate = enabled;
-      if (enabled) requestRender();
     },
     resetCamera() {
       jerseyGroup.rotation.set(0, 0, 0);
-      targetCamPos = new THREE.Vector3(0, 0.25, 4.9);
-      requestRender();
+      targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
     },
     setCameraAngle(view: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT') {
       jerseyGroup.rotation.set(0, 0, 0);
       switch (view) {
         case 'FRONT':
-          targetCamPos = new THREE.Vector3(0, 0.25, 4.9);
+          targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
           break;
         case 'BACK':
-          targetCamPos = new THREE.Vector3(0, 0.25, -4.9);
+          targetCamPos = new THREE.Vector3(0, 0.25, -4.6);
           break;
         case 'LEFT':
-          targetCamPos = new THREE.Vector3(4.6, 0.25, 0);
+          targetCamPos = new THREE.Vector3(4.4, 0.25, 0);
           break;
         case 'RIGHT':
-          targetCamPos = new THREE.Vector3(-4.6, 0.25, 0);
+          targetCamPos = new THREE.Vector3(-4.4, 0.25, 0);
           break;
       }
-      requestRender();
     },
     resize() {
       if (disposed) return;
-      const w = Math.max(280, container.clientWidth);
-      const h = Math.max(280, container.clientHeight);
+      const w = getW();
+      const h = getH();
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-      requestRender();
+      renderer.setSize(w, h, false);
     },
     getFps() {
       return currentFps;
@@ -564,11 +552,10 @@ export function createKit3DEngine(
     },
     dispose() {
       disposed = true;
-      cancelAnimationFrame(frameId);
-      clearTimeout(frameId);
+      cancelAnimationFrame(animFrameId);
       controls.dispose();
-      ktx2Loader.dispose();
-      dracoLoader.dispose();
+      ktx2Loader?.dispose();
+      dracoLoader?.dispose();
       kitTexture.dispose();
       normalTexture.dispose();
       kitMaterial.dispose();
@@ -577,3 +564,4 @@ export function createKit3DEngine(
     },
   };
 }
+
