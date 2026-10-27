@@ -29,6 +29,7 @@ import com.openkitmaker.android.ui.editor.EditorScreen
 import com.openkitmaker.android.ui.export.ExportScreen
 import com.openkitmaker.android.ui.home.HomeScreen
 import com.openkitmaker.android.ui.saved.SavedKitsScreen
+import com.openkitmaker.android.ui.theme.OpenKitTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -44,25 +45,12 @@ class OpenKitMakerApp : Application(), Configuration.Provider {
             .build()
 }
 
-private val OpenKitDarkColors = darkColorScheme(
-    primary = Color(0xFF0F52BA),
-    secondary = Color(0xFF00C49F),
-    background = Color(0xFF0F141C),
-    surface = Color(0xFF1A2230),
-    surfaceVariant = Color(0xFF253146),
-    onPrimary = Color.White,
-    onSecondary = Color(0xFF0F141C),
-    onBackground = Color.White,
-    onSurface = Color.White,
-    error = Color(0xFFEF4444)
-)
-
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(colorScheme = OpenKitDarkColors) {
+            OpenKitTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

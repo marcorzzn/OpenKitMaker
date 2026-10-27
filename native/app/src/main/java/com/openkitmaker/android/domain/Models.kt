@@ -265,8 +265,8 @@ data class Template(
 @Serializable
 data class GeneratorInfo(
     val platform: String = "OpenKitMaker-Native",
-    val version: String = "1.0.0",
-    val buildNumber: String = "100"
+    val version: String = "1.1.0",
+    val buildNumber: String = "110"
 )
 
 @Serializable
@@ -288,7 +288,8 @@ data class ExportChecksums(
 data class ManifestKitData(
     val templateId: String,
     val layers: List<Layer>,
-    val garments: KitGarments? = null
+    val garments: KitGarments? = null,
+    val metadata: KitMetadata? = null
 )
 
 @Serializable

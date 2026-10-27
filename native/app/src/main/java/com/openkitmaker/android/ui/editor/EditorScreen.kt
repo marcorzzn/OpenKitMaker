@@ -52,6 +52,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -95,6 +97,7 @@ fun EditorScreen(
     var activeTab by remember { mutableStateOf(BottomEditorTab.LAYERS) }
     var showRawUvSheet by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val currentKit = kit ?: return
     val activeLayers = viewModel.getActiveLayers(currentKit, activeGarmentType)
     val activeLayer = activeLayers.firstOrNull { it.id == selectedLayerId }
@@ -161,7 +164,11 @@ fun EditorScreen(
                             )
                         }
                         Button(
-                            onClick = viewModel::saveDraft,
+                            onClick = {
+                                viewModel.saveDraft { _, msg ->
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F52BA)),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),

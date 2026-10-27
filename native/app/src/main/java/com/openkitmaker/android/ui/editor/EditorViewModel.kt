@@ -26,7 +26,7 @@ enum class GarmentSelection(val labelIt: String, val emoji: String) {
     JERSEY("Maglia", "👕"),
     SHORTS("Pantaloncini", "🩳"),
     SOCKS("Calzettoni", "🧦"),
-    ALL("Completo", "👤")
+    ALL("Vista Completo", "👤")
 }
 
 @HiltViewModel
@@ -276,10 +276,15 @@ class EditorViewModel @Inject constructor(
         recomposite2D(updated)
     }
 
-    fun saveDraft() {
+    fun saveDraft(onResult: ((Boolean, String) -> Unit)? = null) {
         val current = _kit.value ?: return
         viewModelScope.launch {
-            kitRepository.saveKit(current)
+            try {
+                kitRepository.saveKit(current)
+                onResult?.invoke(true, "Kit \"${current.name}\" salvato in memoria locale.")
+            } catch (e: Exception) {
+                onResult?.invoke(false, "Spazio di archiviazione locale insufficiente per completare l'operazione.")
+            }
         }
     }
 }

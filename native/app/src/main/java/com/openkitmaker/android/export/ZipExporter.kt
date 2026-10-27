@@ -89,7 +89,8 @@ class ZipExporter @AssistedInject constructor(
                 kitData = ManifestKitData(
                     templateId = kit.templateId,
                     layers = kit.layers,
-                    garments = kit.garments
+                    garments = kit.garments,
+                    metadata = kit.metadata
                 )
             )
 

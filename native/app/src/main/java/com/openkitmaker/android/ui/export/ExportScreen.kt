@@ -94,13 +94,13 @@ fun ExportScreen(
                         onClick = { viewModel.exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.SHORTS) },
                         enabled = !isExporting
                     ) {
-                        Text("🩳 Shorts")
+                        Text("🩳 Pantaloncini")
                     }
                     Button(
                         onClick = { viewModel.exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.SOCKS) },
                         enabled = !isExporting
                     ) {
-                        Text("🧦 Calze")
+                        Text("🧦 Calzettoni")
                     }
                 }
 
