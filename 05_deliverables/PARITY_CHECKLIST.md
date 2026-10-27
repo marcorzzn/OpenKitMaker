@@ -110,3 +110,23 @@ Questa checklist costituisce lo strumento oggettivo a disposizione dei committen
 3. **Pipeline CI su GitHub Actions**:
    - `Web CI`: ✅ **Success** (artefatto `OpenKitMaker-Web-Dist` compilato e testato).
    - `Android Build`: ✅ **Success** (artefatto `OpenKitMaker-Debug-APK` compilato e testato).
+
+---
+
+## Aggiornamento Fase 1.1: Fix Critici & UX Overhaul (100% Parità Sincronizzata)
+
+- [x] **FIX 1: Risoluzione WebGL Temporal Dead Zone su Web (`engine3d.ts` & `Viewport3D.svelte`)**
+  - Risolto errore runtime JS `Cannot access 'disposed' before initialization`. Dichiarato `let disposed = false;` all'inizio di `createKit3DEngine` e implementati guard anti race condition (`isInitializing`, `isDestroyed`).
+- [x] **FIX 2: Risoluzione Texture PBR Filament su Android (`MaterialFactory.kt`, `Kit3DRenderer.kt` & `kit_jersey_pbr.glb`)**
+  - Eliminato il modello 3D bianco: incorporata texture PNG 1x1 base nel GLB (`generate-glb.mjs`) per abilitare il parametro `baseColorMap` nell'ubershader Filament.
+  - Texture creata con `levels(1)` e `Texture.Sampler.SAMPLER_2D` senza overhead di generazione mipmap a ogni modifica layer.
+  - Applicazione parametrica a tutte le entità e primitive renderable del modello via `renderableManager.getMaterialInstanceAt`.
+- [x] **FIX 3: Riprogettazione Anteprima 2D — Mockup Maglia Sartoriale (`compositor2d.ts` & `TextureEngine.kt`)**
+  - Sostituito il foglio UV srotolato con un mockup fotorealistico della maglia in 2D (sagome Fronte e Retro affiancate, maniche raglan angolate, colletto a costine).
+  - Applicata ombra realistica morbida multi-pass (`BlurMaskFilter` e canvas drop shadow) e sfumatura volumetrica 3D sul tessuto.
+  - Aggiunto selettore rapido `[ Mockup Maglia 2D | Foglio UV ]` sia su Web che su Android per consentire ai modder l'ispezione della texture 2048×2048 se desiderato.
+- [x] **FIX 4: Polish UI Android Material 3 (`TopNavBar.kt`, `MainActivity.kt` & `EditorScreen.kt`)**
+  - Ridotto titolo a "Kit Maker" con altezza compatta 50dp.
+  - Sostituiti i pulsanti testuali che andavano a capo con icone veloci (`🏠`, `📁`, `💾`) e menu a tendina `DropdownMenu`.
+  - Riga nome kit ("Classico Verticale Casa Bozza") compattata su una singola riga (altezza 40dp, `singleLine = true`).
+  - Nascosta `TopNavBar` ridondante durante l'editing in `SCR-EDITOR` per massimizzare lo spazio verticale su smartphone.

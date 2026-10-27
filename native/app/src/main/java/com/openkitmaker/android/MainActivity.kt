@@ -1,4 +1,4 @@
-﻿// Implements: SCR-HOME / SCR-CATALOG / SCR-EDITOR / SCR-SAVED / SCR-EXPORT / FUN-OFFLINE-MODE
+// Implements: SCR-HOME / SCR-CATALOG / SCR-EDITOR / SCR-SAVED / SCR-EXPORT / FUN-OFFLINE-MODE
 package com.openkitmaker.android
 
 import android.app.Application
@@ -82,14 +82,16 @@ fun OpenKitMakerNavGraph() {
 
     Scaffold(
         topBar = {
-            TopNavBar(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        launchSingleTop = true
+            if (!currentRoute.startsWith("SCR-EDITOR")) {
+                TopNavBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -114,7 +116,17 @@ fun OpenKitMakerNavGraph() {
                 arguments = listOf(navArgument("kitId") { type = NavType.StringType })
             ) {
                 EditorScreen(
-                    onNavigateToExport = { kitId -> navController.navigate("SCR-EXPORT/$kitId") }
+                    onNavigateToExport = { kitId -> navController.navigate("SCR-EXPORT/$kitId") },
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToHome = {
+                        navController.navigate("SCR-HOME") { launchSingleTop = true }
+                    },
+                    onNavigateToCatalog = {
+                        navController.navigate("SCR-CATALOG") { launchSingleTop = true }
+                    },
+                    onNavigateToSaved = {
+                        navController.navigate("SCR-SAVED") { launchSingleTop = true }
+                    }
                 )
             }
             composable("SCR-SAVED") {

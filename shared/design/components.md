@@ -65,17 +65,25 @@ I componenti devono presentare la stessa struttura anatomica, gli stessi stati i
     - Toggle rotazione automatica (auto-spin).
   - Sovrimpressione di feedback per framerate (visibile solo in modalità debug/benchmark).
 
-### `Texture2DView` & UV Mapping Maniche (Sleeves)
-- Area di visualizzazione a schermo intero o split della texture piana compositata:
-  - Griglia UV semi-trasparente opzionale per allineamento sartoriale.
-  - Funzione pinch-to-zoom e pan per ispezionare dettagli ad alta risoluzione.
-  - **Mappatura Maniche**:
-    - Manica Sinistra: `x: 0..680`, `y: 1360..2048` (rapporto normalizzato `0.0..0.332 w`, `0.664..1.0 h`).
-    - Manica Destra: `x: 1024..1704`, `y: 1360..2048` (rapporto normalizzato `0.50..0.832 w`, `0.664..1.0 h`).
-    - Colletto: `x: 680..1024`, `y: 1360..2048` (`0.332..0.50 w`, `0.664..1.0 h`).
-    - Bordi e Trim: `x: 1704..2048`, `y: 1360..2048` (`0.832..1.0 w`, `0.664..1.0 h`).
-    - Inserti Raglan: Spalle anteriori e posteriori `x: 0..250` e `x: w-250..w`, `y: 0..320`.
-    - Bordi polsino (cuffs): Fascia inferiore con colore secondario `secondaryColor`.
+### `Jersey2DMockup` & `Texture2DView`
+- **Mockup Maglia 2D (Default)**:
+  - Presenta un mockup realistico della maglia (sagome Fronte e Retro affiancate) anziché il foglio UV srotolato.
+  - Mascheratura precisa sulle sagome sartoriali (torso, maniche raglan inclinate, colletto a costine).
+  - Ombreggiatura realistica sottostante (drop shadow multi-layer `rgba(0,0,0,0.55)` con sfocatura 24px/offset Y).
+  - Sfumatura volumetrica 3D sul tessuto per eliminare l'effetto piatto ("naïf").
+  - Switcher rapido: `[ Maglia 2D (Mockup) | Foglio UV (Stampa) ]` per consentire ai modder di ispezionare il foglio 2048×2048 se necessario.
+- **Mappatura UV Maniche (Texture Sheet 2048×2048)**:
+  - Manica Sinistra: `x: 0..680`, `y: 1360..2048` (rapporto normalizzato `0.0..0.332 w`, `0.664..1.0 h`).
+  - Manica Destra: `x: 1024..1704`, `y: 1360..2048` (`0.50..0.832 w`, `0.664..1.0 h`).
+  - Colletto: `x: 680..1024`, `y: 1360..2048` (`0.332..0.50 w`, `0.664..1.0 h`).
+  - Bordi e Trim: `x: 1704..2048`, `y: 1360..2048` (`0.832..1.0 w`, `0.664..1.0 h`).
+
+### `TopNavBar` / `TopAppBar` (Compatta)
+- Intestazione ottimizzata per smartphone (altezza compatta 48dp..52dp):
+  - Titolo sintetico: "Kit Maker".
+  - Navigazione: Icone compatte e menu a tendina (Dropdown) per Home, Catalogo, I Miei Kit per azzerare l'overflow di testo.
+  - Riga nome kit: Campo compatto su una sola riga (altezza 36dp..40dp, `singleLine = true`).
+  - Pulsanti azione compatti: Preset Luce (Studio/Stadio) e Salva.
 
 ### `MinikitCard`
 - Card usata in `SCR-HOME` e `SCR-SAVED`:
@@ -84,4 +92,5 @@ I componenti devono presentare la stessa struttura anatomica, gli stessi stati i
   - Titolo del kit in grassetto (`fontWeight.bold`).
   - Data di salvataggio in testo secondario (`textSecondary`).
   - Barra azioni inferiore con pulsanti compatti: Modifica, Duplica, Cancella.
+
 

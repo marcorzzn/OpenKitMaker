@@ -22,22 +22,37 @@
   let fpsValue = $state<number>(60);
   let fpsTimer: ReturnType<typeof setInterval> | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let isInitializing = false;
+  let isDestroyed = false;
 
   async function initEngine() {
-    if (engine || !mountContainer) return;
+    if (isInitializing || isDestroyed || engine || !mountContainer) return;
     try {
+      isInitializing = true;
       isLoadingEngine = true;
       loadError = null;
       const module3d = await import('../lib/engine3d');
-      if (!mountContainer) return;
+      if (isDestroyed || !mountContainer) {
+        isInitializing = false;
+        return;
+      }
 
-      engine = module3d.createKit3DEngine(
+      const instance = module3d.createKit3DEngine(
         mountContainer,
         sourceCanvas,
         studio.lightingPreset
       );
+
+      if (isDestroyed) {
+        instance.dispose();
+        isInitializing = false;
+        return;
+      }
+
+      engine = instance;
       engine.setFinishType(studio.activeKit.metadata?.finishType || 'PRO_VAPOR');
       isLoadingEngine = false;
+      isInitializing = false;
 
       resizeObserver = new ResizeObserver(() => {
         engine?.resize();
@@ -57,6 +72,7 @@
     } catch (err: any) {
       loadError = err?.message || 'Errore inizializzazione WebGL2.';
       isLoadingEngine = false;
+      isInitializing = false;
     }
   }
 
@@ -65,6 +81,7 @@
   });
 
   onDestroy(() => {
+    isDestroyed = true;
     if (fpsTimer) clearInterval(fpsTimer);
     resizeObserver?.disconnect();
     engine?.dispose();
@@ -73,7 +90,7 @@
 
   // Reactively push 2048x2048 Canvas updates to 3D PBR texture
   $effect(() => {
-    if (!engine && mountContainer) {
+    if (!engine && !isInitializing && mountContainer) {
       initEngine();
     }
     const _rev = textureRevision;

@@ -20,19 +20,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.openkitmaker.android.domain.EditorViewMode
+import com.openkitmaker.android.domain.LightingMode
 import com.openkitmaker.android.render.Kit3DRenderer
 import com.openkitmaker.android.ui.components.ColorPicker
 import com.openkitmaker.android.ui.components.LayerList
@@ -66,17 +72,23 @@ enum class BottomEditorTab(val label: String) {
 @Composable
 fun EditorScreen(
     onNavigateToExport: (String) -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToCatalog: () -> Unit = {},
+    onNavigateToSaved: () -> Unit = {},
     viewModel: EditorViewModel = hiltViewModel()
 ) {
     val kit by viewModel.kit.collectAsState()
     val selectedLayerId by viewModel.selectedLayerId.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
     val albedoBitmap by viewModel.albedoBitmap.collectAsState()
+    val previewMockupBitmap by viewModel.previewMockupBitmap.collectAsState()
     val yaw by viewModel.yaw.collectAsState()
     val pitch by viewModel.pitch.collectAsState()
     val zoom by viewModel.zoom.collectAsState()
 
     var activeTab by remember { mutableStateOf(BottomEditorTab.LAYERS) }
+    var showRawUvSheet by remember { mutableStateOf(false) }
 
     val currentKit = kit ?: return
     val activeLayer = currentKit.layers.firstOrNull { it.id == selectedLayerId }
@@ -89,42 +101,99 @@ fun EditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Text("←", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                    }
+                },
                 title = {
-                    OutlinedTextField(
-                        value = currentKit.name,
-                        onValueChange = viewModel::updateKitName,
-                        singleLine = true,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .height(52.dp),
-                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            .fillMaxWidth()
+                            .padding(end = 4.dp)
+                    ) {
+                        Text(
+                            text = "Kit Maker",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color(0xFF00C49F)
                         )
-                    )
+                        OutlinedTextField(
+                            value = currentKit.name,
+                            onValueChange = viewModel::updateKitName,
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFF141B26),
+                                unfocusedContainerColor = Color(0xFF141B26),
+                                focusedBorderColor = Color(0xFF0F52BA),
+                                unfocusedBorderColor = Color(0xFF2E3D56)
+                            )
+                        )
+                    }
                 },
                 actions = {
+                    var showMenu by remember { mutableStateOf(false) }
                     Row(
-                        modifier = Modifier.padding(end = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(end = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedButton(
-                            onClick = viewModel::toggleLightingMode,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
+                        IconButton(onClick = viewModel::toggleLightingMode) {
                             Text(
-                                text = "💡 ${currentKit.metadata.lightingMode.labelIt}",
-                                color = Color(0xFF00C49F),
-                                style = MaterialTheme.typography.labelMedium
+                                text = if (currentKit.metadata.lightingMode == LightingMode.STUDIO) "💡" else "🏟️",
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                         Button(
                             onClick = viewModel::saveDraft,
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F52BA)),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(34.dp)
                         ) {
-                            Text("Salva", color = Color.White)
+                            Text("Salva", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Text("⋮", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(Color(0xFF1A2230))
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("🏠 Home", color = Color.White) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToHome()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("📁 Catalogo", color = Color.White) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToCatalog()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("💾 I Miei Kit", color = Color.White) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToSaved()
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -226,21 +295,21 @@ fun EditorScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Viewport Mode Selector Bar (2D / 3D / Split)
+            // Viewport Mode Selector Bar (2D / 3D / Split) + Mockup/UV Switcher
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF141B26))
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     EditorViewMode.entries.forEach { mode ->
                         FilterChip(
                             selected = viewMode == mode,
                             onClick = { viewModel.setViewMode(mode) },
-                            label = { Text(mode.labelIt) },
+                            label = { Text(mode.labelIt, style = MaterialTheme.typography.labelSmall) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Color(0xFF0F52BA),
                                 selectedLabelColor = Color.White,
@@ -251,11 +320,24 @@ fun EditorScreen(
                     }
                 }
 
-                Text(
-                    text = "2048×2048 RGBA",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF64748B)
-                )
+                if (viewMode == EditorViewMode.VIEW_2D || viewMode == EditorViewMode.VIEW_SPLIT) {
+                    FilterChip(
+                        selected = !showRawUvSheet,
+                        onClick = { showRawUvSheet = !showRawUvSheet },
+                        label = {
+                            Text(
+                                text = if (!showRawUvSheet) "Mockup 2D" else "Foglio UV",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF253146),
+                            selectedLabelColor = Color(0xFF00C49F),
+                            containerColor = Color(0xFF1A2230),
+                            labelColor = Color(0xFF94A3B8)
+                        )
+                    )
+                }
             }
 
             // Area Superiore: Viewport 2D Texture e/o 3D PBR Filament
@@ -274,10 +356,11 @@ fun EditorScreen(
                                 .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            albedoBitmap?.let { bmp ->
+                            val displayBmp = if (showRawUvSheet) albedoBitmap else (previewMockupBitmap ?: albedoBitmap)
+                            displayBmp?.let { bmp ->
                                 Image(
                                     bitmap = bmp.asImageBitmap(),
-                                    contentDescription = "Texture 2D 2048x2048",
+                                    contentDescription = if (showRawUvSheet) "Mappa UV 2048x2048" else "Mockup Maglia 2D",
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }

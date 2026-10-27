@@ -153,8 +153,66 @@ const jersey = buildJersey();
 const exporter = new GLTFExporter();
 
 try {
-  const gltf = await exporter.parseAsync(jersey, { binary: true });
-  const buffer = Buffer.from(gltf);
+  const rawGltf = await exporter.parseAsync(jersey, { binary: true });
+  const rawBuffer = Buffer.from(rawGltf);
+
+  // Filament gltfio compiles ubershader materials without 'baseColorMap' if the GLTF
+  // material does not have 'baseColorTexture'. We embed a 1x1 base PNG image into the GLB
+  // so Filament compiles with 'baseColorMap' parameter support.
+  const png1x1 = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const padPng = (4 - (png1x1.length % 4)) % 4;
+  const pngBuf = Buffer.concat([png1x1, Buffer.alloc(padPng)]);
+
+  const jsonLen = rawBuffer.readUInt32LE(12);
+  const gltfObj = JSON.parse(rawBuffer.subarray(20, 20 + jsonLen).toString('utf8'));
+
+  const binHeaderOffset = 20 + jsonLen;
+  const binLen = rawBuffer.readUInt32LE(binHeaderOffset);
+  const origBin = rawBuffer.subarray(binHeaderOffset + 8, binHeaderOffset + 8 + binLen);
+
+  const newBin = Buffer.concat([origBin, pngBuf]);
+  gltfObj.buffers[0].byteLength = newBin.length;
+
+  const imgViewIdx = gltfObj.bufferViews.length;
+  gltfObj.bufferViews.push({
+    buffer: 0,
+    byteOffset: binLen,
+    byteLength: png1x1.length,
+  });
+
+  gltfObj.images = [{ bufferView: imgViewIdx, mimeType: 'image/png' }];
+  gltfObj.samplers = [{ magFilter: 9729, minFilter: 9729, wrapS: 10497, wrapT: 10497 }];
+  gltfObj.textures = [{ sampler: 0, source: 0 }];
+
+  for (const mat of gltfObj.materials) {
+    if (!mat.pbrMetallicRoughness) mat.pbrMetallicRoughness = {};
+    mat.pbrMetallicRoughness.baseColorTexture = { index: 0 };
+  }
+
+  let jsonStr = JSON.stringify(gltfObj);
+  const padJson = (4 - (Buffer.byteLength(jsonStr) % 4)) % 4;
+  jsonStr += ' '.repeat(padJson);
+  const newJsonBuf = Buffer.from(jsonStr, 'utf8');
+
+  const totalLen = 12 + 8 + newJsonBuf.length + 8 + newBin.length;
+  const buffer = Buffer.alloc(totalLen);
+  buffer.write('glTF', 0);
+  buffer.writeUInt32LE(2, 4);
+  buffer.writeUInt32LE(totalLen, 8);
+
+  // Chunk 0 (JSON)
+  buffer.writeUInt32LE(newJsonBuf.length, 12);
+  buffer.writeUInt32LE(0x4e4f534a, 16);
+  newJsonBuf.copy(buffer, 20);
+
+  // Chunk 1 (BIN)
+  const chunk1Offset = 20 + newJsonBuf.length;
+  buffer.writeUInt32LE(newBin.length, chunk1Offset);
+  buffer.writeUInt32LE(0x004e4942, chunk1Offset + 4);
+  newBin.copy(buffer, chunk1Offset + 8);
 
   // 1. Android assets destination
   const androidAssetsDir = path.resolve('../native/app/src/main/assets/models');

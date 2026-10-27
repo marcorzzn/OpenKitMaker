@@ -9,6 +9,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.graphics.BlurMaskFilter
+import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -50,6 +53,179 @@ object TextureEngine {
         }
 
         drawUvSeamGuides(canvas, width.toFloat(), height.toFloat())
+        return bitmap
+    }
+
+    /**
+     * FUN-COMPOSITE-2D / FIX 3: Rende il Mockup 2D fotorealistico della maglia (sagoma fronte/retro con maniche)
+     * campionando dalla texture 2048x2048 e applicando ombra realistica e volume 3D sartoriale.
+     */
+    fun renderJerseyMockupBitmap(
+        kit: Kit,
+        fullTexture: Bitmap,
+        width: Int = 1024,
+        height: Int = 1024
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // 1. Studio Dark Backdrop Radial Gradient
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                width / 2f, height * 0.45f, width * 0.65f,
+                Color.parseColor("#1E293B"),
+                Color.parseColor("#0F141C"),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+
+        // 2. Griglia architettonica dello studio
+        val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#2E3D56")
+            alpha = (0.35f * 255f).toInt()
+            strokeWidth = 1f
+            style = Paint.Style.STROKE
+        }
+        val step = width / 16f
+        var gx = step
+        while (gx < width) {
+            canvas.drawLine(gx, 0f, gx, height.toFloat(), gridPaint)
+            gx += step
+        }
+        var gy = step
+        while (gy < height) {
+            canvas.drawLine(0f, gy, width.toFloat(), gy, gridPaint)
+            gy += step
+        }
+
+        fun drawJerseySilhouette(cx: Float, cy: Float, scale: Float, isBack: Boolean) {
+            canvas.save()
+            canvas.translate(cx, cy)
+            canvas.scale(scale, scale)
+
+            // Sagoma sartoriale anatomica della maglia
+            val path = Path().apply {
+                moveTo(-58f, -148f)
+                if (isBack) {
+                    quadTo(0f, -134f, 58f, -148f)
+                } else {
+                    lineTo(0f, -108f)
+                    lineTo(58f, -148f)
+                }
+                lineTo(106f, -136f)
+                lineTo(154f, -52f)
+                lineTo(116f, -24f)
+                lineTo(92f, -66f)
+                lineTo(92f, 148f)
+                lineTo(-92f, 148f)
+                lineTo(-92f, -66f)
+                lineTo(-116f, -24f)
+                lineTo(-154f, -52f)
+                lineTo(-106f, -136f)
+                close()
+            }
+
+            // Ombra realistica morbida (Drop Shadow multi-pass)
+            val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                alpha = (0.58f * 255f).toInt()
+                maskFilter = runCatching { BlurMaskFilter(22f, BlurMaskFilter.Blur.NORMAL) }.getOrNull()
+            }
+            canvas.save()
+            canvas.translate(0f, 16f)
+            canvas.drawPath(path, shadowPaint)
+            canvas.restore()
+
+            // Maschera di ritaglio sulla sagoma della maglia
+            canvas.save()
+            canvas.clipPath(path)
+
+            // Campionamento del busto dalla texture 2048x2048
+            val srcRect = if (isBack) {
+                Rect(1024, 0, 2048, 1360)
+            } else {
+                Rect(0, 0, 1024, 1360)
+            }
+            val dstRect = RectF(-105f, -152f, 105f, 152f)
+            canvas.drawBitmap(fullTexture, srcRect, dstRect, Paint(Paint.FILTER_BITMAP_FLAG))
+
+            // Manica Sinistra
+            canvas.save()
+            canvas.translate(-120f, -80f)
+            canvas.rotate(30f)
+            val sleeveLeftSrc = Rect(0, 1360, 680, 2048)
+            val sleeveLeftDst = RectF(-36f, -56f, 38f, 70f)
+            canvas.drawBitmap(fullTexture, sleeveLeftSrc, sleeveLeftDst, Paint(Paint.FILTER_BITMAP_FLAG))
+            canvas.restore()
+
+            // Manica Destra
+            canvas.save()
+            canvas.translate(120f, -80f)
+            canvas.rotate(-30f)
+            val sleeveRightSrc = Rect(1024, 1360, 1704, 2048)
+            val sleeveRightDst = RectF(-38f, -56f, 36f, 70f)
+            canvas.drawBitmap(fullTexture, sleeveRightSrc, sleeveRightDst, Paint(Paint.FILTER_BITMAP_FLAG))
+            canvas.restore()
+
+            // Sfumatura volumetrica 3D sul tessuto (luce e pieghe realistiche)
+            val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(
+                    -140f, 0f, 140f, 0f,
+                    intArrayOf(
+                        Color.argb((0.30f * 255f).toInt(), 0, 0, 0),
+                        Color.argb((0.08f * 255f).toInt(), 255, 255, 255),
+                        Color.TRANSPARENT,
+                        Color.argb((0.08f * 255f).toInt(), 255, 255, 255),
+                        Color.argb((0.34f * 255f).toInt(), 0, 0, 0)
+                    ),
+                    floatArrayOf(0f, 0.2f, 0.5f, 0.8f, 1.0f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawRect(-160f, -160f, 160f, 160f, shadePaint)
+
+            canvas.restore() // Fine maschera clip
+
+            // Contorno sartoriale netto
+            val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = (0.28f * 255f).toInt()
+                strokeWidth = 2.5f
+                style = Paint.Style.STROKE
+            }
+            canvas.drawPath(path, outlinePaint)
+
+            canvas.restore()
+        }
+
+        // Sagoma Retro a destra e Fronte in primo piano a sinistra
+        val s = width / 512f
+        drawJerseySilhouette(330f * s, 258f * s, 0.92f * s, isBack = true)
+        drawJerseySilhouette(188f * s, 244f * s, 1.02f * s, isBack = false)
+
+        // Banner informativo inferiore
+        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#0F141C")
+            alpha = (0.90f * 255f).toInt()
+        }
+        canvas.drawRect(0f, height - 44f * s, width.toFloat(), height.toFloat(), footerPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 17f * s
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        canvas.drawText(kit.name.uppercase().take(28), 18f * s, height - 16f * s, textPaint)
+
+        val metaPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#00C49F")
+            textSize = 13f * s
+            textAlign = Paint.Align.RIGHT
+            typeface = Typeface.MONOSPACE
+        }
+        canvas.drawText("${kit.category} · Mockup 2D", width - 18f * s, height - 16f * s, metaPaint)
+
         return bitmap
     }
 

@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { studio } from '../state/studio.svelte';
   import { i18n } from '../i18n/it';
-  import { compositeKit2048 } from '../lib/compositor2d';
+  import { compositeKit2048, renderMinikitPreview512 } from '../lib/compositor2d';
   import ColorPickerHsv from './ColorPickerHsv.svelte';
   import Viewport3D from './Viewport3D.svelte';
   import type {
@@ -18,6 +18,8 @@
   } from '../types/kit';
 
   let canvas2dRef = $state<HTMLCanvasElement | null>(null);
+  let mockupCanvasRef = $state<HTMLCanvasElement | null>(null);
+  let displayMode2d = $state<'MOCKUP' | 'UV'>('MOCKUP');
   let zoom2d = $state<number>(1.0);
 
   const componentRailItems: { type: LayerType; label: string; shortCode: string }[] = [
@@ -80,6 +82,9 @@
     compositeKit2048(canvas2dRef, studio.activeKit, {
       showUvGuides: studio.showUvGuides,
     });
+    if (mockupCanvasRef) {
+      renderMinikitPreview512(mockupCanvasRef, canvas2dRef, studio.activeKit);
+    }
     const elapsed = performance.now() - t0;
     studio.lastCompositeTimeMs = Math.round(elapsed * 10) / 10;
   }
@@ -715,28 +720,46 @@
         ? 'grid-cols-1 xl:grid-cols-2'
         : 'grid-cols-1'}"
     >
-      <!-- Texture2DView (Always mounted in DOM so the 2048x2048 canvas feeds the 3D CanvasTexture) -->
+      <!-- Texture2DView / Mockup Maglia 2D (Always mounted in DOM so 2048x2048 feeds 3D CanvasTexture) -->
       <div
         class="{studio.editorViewMode === '3D'
           ? 'sr-only pointer-events-none'
           : 'flex flex-col bg-[#1A2230] border border-[#2E3D56] rounded-xl p-4 space-y-3'}"
       >
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2 text-xs text-[#94A3B8] font-mono-tabular">
-            <span class="text-white font-semibold">Texture2DView</span>
-            <span aria-hidden="true">·</span>
-            <span>Risoluzione Interna 2048×2048 px</span>
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <!-- Toggle: Mockup 2D vs Foglio UV -->
+          <div class="inline-flex items-center p-0.5 bg-[#0F141C] border border-[#2E3D56] rounded-lg">
+            <button
+              type="button"
+              onclick={() => (displayMode2d = 'MOCKUP')}
+              class="px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer {displayMode2d === 'MOCKUP'
+                ? 'bg-[#0F52BA] text-white shadow-sm'
+                : 'text-[#94A3B8] hover:text-white'}"
+            >
+              Mockup Maglia 2D
+            </button>
+            <button
+              type="button"
+              onclick={() => (displayMode2d = 'UV')}
+              class="px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer {displayMode2d === 'UV'
+                ? 'bg-[#0F52BA] text-white shadow-sm'
+                : 'text-[#94A3B8] hover:text-white'}"
+            >
+              Foglio UV (2048px)
+            </button>
           </div>
 
           <div class="flex items-center gap-2">
-            <label class="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-white cursor-pointer">
-              <input
-                type="checkbox"
-                bind:checked={studio.showUvGuides}
-                class="accent-[#00C49F]"
-              />
-              Guide UV
-            </label>
+            {#if displayMode2d === 'UV'}
+              <label class="flex items-center gap-1.5 text-xs text-[#94A3B8] hover:text-white cursor-pointer">
+                <input
+                  type="checkbox"
+                  bind:checked={studio.showUvGuides}
+                  class="accent-[#00C49F]"
+                />
+                Guide UV
+              </label>
+            {/if}
 
             <button
               type="button"
@@ -749,18 +772,28 @@
         </div>
 
         <div class="relative bg-[#0F141C] border border-[#2E3D56] rounded-lg overflow-auto flex items-center justify-center aspect-square max-h-[600px]">
+          <!-- 2D Photorealistic Jersey Mockup Canvas (Default user view) -->
+          <canvas
+            bind:this={mockupCanvasRef}
+            width="512"
+            height="512"
+            class="w-full h-full object-contain transition-transform duration-150 {displayMode2d === 'MOCKUP' ? 'block' : 'hidden'}"
+            style="transform: scale({zoom2d}); transform-origin: center center;"
+          ></canvas>
+
+          <!-- 2048x2048 Full Texture Canvas (Active in DOM for 3D PBR and print UV unwrap inspection) -->
           <canvas
             bind:this={canvas2dRef}
             width="2048"
             height="2048"
-            class="w-full h-full object-contain transition-transform duration-150"
+            class="w-full h-full object-contain transition-transform duration-150 {displayMode2d === 'UV' ? 'block' : 'sr-only pointer-events-none'}"
             style="transform: scale({zoom2d}); transform-origin: center center;"
           ></canvas>
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-[#64748B] font-mono-tabular">
-          <span>Quadranti UV: Fronte (TL) · Retro (TR) · Manica SX/Colletto (BL) · Manica DX/Trim (BR)</span>
-          <span>RGBA 32-bit</span>
+          <span>{displayMode2d === 'MOCKUP' ? 'Sagome Fronte & Retro con ombreggiatura e maniche sagomate' : 'Quadranti UV: Fronte · Retro · Manica SX · Manica DX'}</span>
+          <span>{displayMode2d === 'MOCKUP' ? 'Mockup 512×512' : '2048×2048 RGBA'}</span>
         </div>
       </div>
 

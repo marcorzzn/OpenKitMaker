@@ -266,6 +266,8 @@ export function createKit3DEngine(
   sourceCanvas2048: HTMLCanvasElement | null,
   initialLighting: LightingPreset = 'studio'
 ): Kit3DEngineController {
+  let disposed = false;
+
   // Detect software WebGL per Three.js skill guidelines
   const isSoftwareGl = (() => {
     try {
@@ -448,7 +450,6 @@ export function createKit3DEngine(
   let frameCount = 0;
   let lastFpsStamp = performance.now();
   let animFrameId = 0;
-  let disposed = false;
 
   const clock = new THREE.Clock();
 

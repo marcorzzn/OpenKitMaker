@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EDITOR / FUN-PREVIEW-3D
+// Implements: SCR-EDITOR / FUN-PREVIEW-3D
 package com.openkitmaker.android.render
 
 import android.content.Context
@@ -31,13 +31,12 @@ object MaterialFactory {
         val texture = existingTexture ?: Texture.Builder()
             .width(width)
             .height(height)
-            .levels(4)
+            .levels(1)
             .sampler(Texture.Sampler.SAMPLER_2D)
-            .format(Texture.InternalFormat.SRGB8_A8)
+            .format(Texture.InternalFormat.RGBA8)
             .build(engine)
 
         TextureHelper.setBitmap(engine, texture, 0, bitmap)
-        texture.generateMipmaps(engine)
         return texture
     }
 
@@ -85,11 +84,11 @@ object MaterialFactory {
         metalness: Float
     ) {
         val sampler = TextureSampler(
-            TextureSampler.MinFilter.LINEAR_MIPMAP_LINEAR,
+            TextureSampler.MinFilter.LINEAR,
             TextureSampler.MagFilter.LINEAR,
             TextureSampler.WrapMode.REPEAT
         ).apply {
-            anisotropy = 8.0f
+            anisotropy = 4.0f
         }
 
         runCatching {
@@ -97,6 +96,8 @@ object MaterialFactory {
             materialInstance.setParameter("normalMap", normalTexture, sampler)
             materialInstance.setParameter("roughnessFactor", roughness.coerceIn(0.15f, 0.95f))
             materialInstance.setParameter("metallicFactor", metalness.coerceIn(0.0f, 0.4f))
+        }.onFailure { err ->
+            android.util.Log.e("MaterialFactory", "Errore applicazione texture Filament baseColorMap: ${err.message}")
         }
     }
 }

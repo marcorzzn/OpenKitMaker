@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EDITOR / FUN-MANAGE-LAYERS / FUN-EDIT-COLOR / FUN-COMPOSITE-2D / FUN-PREVIEW-3D / FUN-SAVE-LOCAL
+// Implements: SCR-EDITOR / FUN-MANAGE-LAYERS / FUN-EDIT-COLOR / FUN-COMPOSITE-2D / FUN-PREVIEW-3D / FUN-SAVE-LOCAL
 package com.openkitmaker.android.ui.editor
 
 import android.graphics.Bitmap
@@ -42,6 +42,9 @@ class EditorViewModel @Inject constructor(
     private val _albedoBitmap = MutableStateFlow<Bitmap?>(null)
     val albedoBitmap: StateFlow<Bitmap?> = _albedoBitmap.asStateFlow()
 
+    private val _previewMockupBitmap = MutableStateFlow<Bitmap?>(null)
+    val previewMockupBitmap: StateFlow<Bitmap?> = _previewMockupBitmap.asStateFlow()
+
     private val _yaw = MutableStateFlow(0f)
     val yaw: StateFlow<Float> = _yaw.asStateFlow()
 
@@ -65,8 +68,10 @@ class EditorViewModel @Inject constructor(
     private fun recomposite2D(currentKit: Kit) {
         viewModelScope.launch(Dispatchers.Default) {
             val bmp = TextureEngine.compositeKitBitmap(currentKit, 2048, 2048)
+            val mockup = TextureEngine.renderJerseyMockupBitmap(currentKit, bmp, 1024, 1024)
             withContext(Dispatchers.Main) {
                 _albedoBitmap.value = bmp
+                _previewMockupBitmap.value = mockup
             }
         }
     }

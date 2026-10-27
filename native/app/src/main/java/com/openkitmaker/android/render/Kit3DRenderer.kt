@@ -118,6 +118,23 @@ fun Kit3DRenderer(
                     metalness = metalness
                 )
             }
+            node.modelInstance?.entities?.forEach { entity ->
+                val rm = engine.renderableManager
+                val ri = rm.getInstance(entity)
+                if (ri != 0) {
+                    val count = rm.getPrimitiveCount(ri)
+                    for (p in 0 until count) {
+                        val mi = rm.getMaterialInstanceAt(ri, p)
+                        MaterialFactory.applyKitPbrParameters(
+                            materialInstance = mi,
+                            albedoTexture = tex,
+                            normalTexture = fabricNormalTexture,
+                            roughness = roughness,
+                            metalness = metalness
+                        )
+                    }
+                }
+            }
         }
     }
 
