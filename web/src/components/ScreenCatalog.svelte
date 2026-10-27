@@ -4,7 +4,7 @@
   import { studio } from '../state/studio.svelte';
   import { i18n } from '../i18n/it';
   import { BUILTIN_TEMPLATES, cloneTemplateToKit } from '../data/templates';
-  import { compositeKit2048, renderMinikitPreview512 } from '../lib/compositor2d';
+  import { renderFullKitMockup512 } from '../lib/compositor2d';
   import type { KitCategory, Template } from '../types/kit';
 
   let searchQuery = $state<string>('');
@@ -36,10 +36,7 @@
   );
 
   onMount(() => {
-    // Generate crisp 2D minikit previews for all catalog templates
-    const texCanvas = document.createElement('canvas');
-    texCanvas.width = 2048;
-    texCanvas.height = 2048;
+    // Generate crisp 2D Full Kit previews for all catalog templates
     const prevCanvas = document.createElement('canvas');
     prevCanvas.width = 512;
     prevCanvas.height = 512;
@@ -47,8 +44,7 @@
     const map: Record<string, string> = {};
     for (const tpl of BUILTIN_TEMPLATES) {
       const tempKit = cloneTemplateToKit(tpl);
-      compositeKit2048(texCanvas, tempKit);
-      map[tpl.id] = renderMinikitPreview512(prevCanvas, texCanvas, tempKit);
+      map[tpl.id] = renderFullKitMockup512(prevCanvas, tempKit);
     }
     templatePreviews = map;
   });

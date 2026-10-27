@@ -22,6 +22,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+enum class GarmentSelection(val labelIt: String, val emoji: String) {
+    JERSEY("Maglia", "👕"),
+    SHORTS("Pantaloncini", "🩳"),
+    SOCKS("Calzettoni", "🧦"),
+    ALL("Completo", "👤")
+}
+
 @HiltViewModel
 class EditorViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -32,6 +39,12 @@ class EditorViewModel @Inject constructor(
 
     private val _kit = MutableStateFlow<Kit?>(null)
     val kit: StateFlow<Kit?> = _kit.asStateFlow()
+
+    private val _activeGarmentType = MutableStateFlow(GarmentSelection.JERSEY)
+    val activeGarmentType: StateFlow<GarmentSelection> = _activeGarmentType.asStateFlow()
+
+    private val _showMannequin = MutableStateFlow(true)
+    val showMannequin: StateFlow<Boolean> = _showMannequin.asStateFlow()
 
     private val _selectedLayerId = MutableStateFlow<String?>(null)
     val selectedLayerId: StateFlow<String?> = _selectedLayerId.asStateFlow()
@@ -59,9 +72,31 @@ class EditorViewModel @Inject constructor(
             val loaded = kitRepository.getKitById(kitId)
             if (loaded != null) {
                 _kit.value = loaded
-                _selectedLayerId.value = loaded.layers.firstOrNull()?.id
+                _selectedLayerId.value = loaded.garments.jersey.layers.firstOrNull()?.id
                 recomposite2D(loaded)
             }
+        }
+    }
+
+    fun selectGarment(selection: GarmentSelection) {
+        _activeGarmentType.value = selection
+        val current = _kit.value ?: return
+        if (selection != GarmentSelection.ALL) {
+            val layers = getActiveLayers(current, selection)
+            _selectedLayerId.value = layers.firstOrNull()?.id
+        }
+    }
+
+    fun toggleMannequin() {
+        _showMannequin.update { !it }
+    }
+
+    fun getActiveLayers(currentKit: Kit, selection: GarmentSelection = _activeGarmentType.value): List<Layer> {
+        return when (selection) {
+            GarmentSelection.JERSEY -> currentKit.garments.jersey.layers
+            GarmentSelection.SHORTS -> currentKit.garments.shorts.layers
+            GarmentSelection.SOCKS -> currentKit.garments.socks.layers
+            GarmentSelection.ALL -> currentKit.layers
         }
     }
 
@@ -109,14 +144,36 @@ class EditorViewModel @Inject constructor(
     fun updateLayerColor(newHex: String) {
         val current = _kit.value ?: return
         val targetId = _selectedLayerId.value ?: return
-        val updatedLayers = current.layers.map {
-            if (it.id == targetId) it.copy(color = newHex) else it
+        val selection = _activeGarmentType.value
+
+        val updatedGarments = when (selection) {
+            GarmentSelection.JERSEY -> {
+                val updatedLayers = current.garments.jersey.layers.map {
+                    if (it.id == targetId) it.copy(color = newHex) else it
+                }
+                current.garments.copy(jersey = current.garments.jersey.copy(layers = updatedLayers))
+            }
+            GarmentSelection.SHORTS -> {
+                val updatedLayers = current.garments.shorts.layers.map {
+                    if (it.id == targetId) it.copy(color = newHex) else it
+                }
+                current.garments.copy(shorts = current.garments.shorts.copy(layers = updatedLayers))
+            }
+            GarmentSelection.SOCKS -> {
+                val updatedLayers = current.garments.socks.layers.map {
+                    if (it.id == targetId) it.copy(color = newHex) else it
+                }
+                current.garments.copy(socks = current.garments.socks.copy(layers = updatedLayers))
+            }
+            GarmentSelection.ALL -> current.garments
         }
+
         val updatedRecent = (listOf(newHex) + current.metadata.recentColors)
             .distinct()
             .take(8)
         val updatedKit = current.copy(
-            layers = updatedLayers,
+            garments = updatedGarments,
+            layers = updatedGarments.jersey.layers,
             metadata = current.metadata.copy(recentColors = updatedRecent)
         )
         _kit.value = updatedKit
@@ -137,14 +194,25 @@ class EditorViewModel @Inject constructor(
 
     fun moveLayerZIndex(id: String, direction: Int) {
         val current = _kit.value ?: return
-        val sorted = current.layers.sortedBy { it.zIndex }.toMutableList()
+        val selection = _activeGarmentType.value
+        val layers = getActiveLayers(current, selection)
+        val sorted = layers.sortedBy { it.zIndex }.toMutableList()
         val idx = sorted.indexOfFirst { it.id == id }
         val targetIdx = (idx + direction).coerceIn(0, sorted.lastIndex)
         if (idx != -1 && idx != targetIdx) {
             val item = sorted.removeAt(idx)
             sorted.add(targetIdx, item)
             val reindexed = sorted.mapIndexed { index, layer -> layer.copy(zIndex = index) }
-            val updated = current.copy(layers = reindexed)
+            val updatedGarments = when (selection) {
+                GarmentSelection.JERSEY -> current.garments.copy(jersey = current.garments.jersey.copy(layers = reindexed))
+                GarmentSelection.SHORTS -> current.garments.copy(shorts = current.garments.shorts.copy(layers = reindexed))
+                GarmentSelection.SOCKS -> current.garments.copy(socks = current.garments.socks.copy(layers = reindexed))
+                GarmentSelection.ALL -> current.garments
+            }
+            val updated = current.copy(
+                garments = updatedGarments,
+                layers = updatedGarments.jersey.layers
+            )
             _kit.value = updated
             recomposite2D(updated)
         }
@@ -152,8 +220,27 @@ class EditorViewModel @Inject constructor(
 
     private fun mutateLayer(id: String, block: (Layer) -> Layer) {
         val current = _kit.value ?: return
+        val selection = _activeGarmentType.value
+
+        val updatedGarments = when (selection) {
+            GarmentSelection.JERSEY -> {
+                val updatedLayers = current.garments.jersey.layers.map { if (it.id == id) block(it) else it }
+                current.garments.copy(jersey = current.garments.jersey.copy(layers = updatedLayers))
+            }
+            GarmentSelection.SHORTS -> {
+                val updatedLayers = current.garments.shorts.layers.map { if (it.id == id) block(it) else it }
+                current.garments.copy(shorts = current.garments.shorts.copy(layers = updatedLayers))
+            }
+            GarmentSelection.SOCKS -> {
+                val updatedLayers = current.garments.socks.layers.map { if (it.id == id) block(it) else it }
+                current.garments.copy(socks = current.garments.socks.copy(layers = updatedLayers))
+            }
+            GarmentSelection.ALL -> current.garments
+        }
+
         val updated = current.copy(
-            layers = current.layers.map { if (it.id == id) block(it) else it }
+            garments = updatedGarments,
+            layers = updatedGarments.jersey.layers
         )
         _kit.value = updated
         recomposite2D(updated)

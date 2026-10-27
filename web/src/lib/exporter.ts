@@ -1,12 +1,17 @@
-// Implements: SCR-EXPORT, SCR-SAVED / FUN-EXPORT-PNG, FUN-EXPORT-ZIP
+// Implements: SCR-EXPORT, SCR-SAVED / FUN-EXPORT-PNG, FUN-EXPORT-ZIP, FUN-EXPORT-SINGLE
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
-import type { Kit, KitManifestV1 } from '../types/kit';
+import type { Kit, KitManifestV1, GarmentType } from '../types/kit';
 import {
   compositeKit2048,
+  compositeJersey2048,
+  compositeShorts2048,
+  compositeSocks2048,
+  compositeGarment2048,
+  renderFullKitMockup512,
   renderMinikitPreview512,
   TEXTURE_SIZE,
 } from './compositor2d';
-import { generateUuidV4 } from '../data/templates';
+import { generateUuidV4, ensureKitGarments } from '../data/templates';
 
 async function canvasToUint8ArrayPng(canvas: HTMLCanvasElement): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -62,18 +67,19 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
 }
 
 /**
- * FUN-EXPORT-PNG: Generates and downloads lossless 2048x2048 RGBA 32-bit PNG texture.
+ * FUN-EXPORT-SINGLE: Generates and downloads lossless 2048x2048 RGBA 32-bit PNG texture for a single garment.
  */
-export async function exportKitPng2048(
+export async function exportGarmentPng2048(
   kit: Kit,
+  garmentType: GarmentType,
   onProgress?: (pct: number) => void
-): Promise<{ bytes: Uint8Array; sha256: string }> {
+): Promise<{ bytes: Uint8Array; sha256: string; filename: string }> {
   onProgress?.(15);
   const workCanvas = document.createElement('canvas');
   workCanvas.width = TEXTURE_SIZE;
   workCanvas.height = TEXTURE_SIZE;
 
-  compositeKit2048(workCanvas, kit, { showUvGuides: false });
+  compositeGarment2048(workCanvas, kit, garmentType, { showUvGuides: false });
   onProgress?.(60);
 
   const pngBytes = await canvasToUint8ArrayPng(workCanvas);
@@ -84,48 +90,90 @@ export async function exportKitPng2048(
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
+  const prefix = garmentType.toLowerCase();
+  const filename = `${prefix}_${safeSlug || kit.id.slice(0, 8)}_2048.png`;
   const blob = new Blob([pngBytes as unknown as BlobPart], { type: 'image/png' });
-  triggerBlobDownload(blob, `texture_${safeSlug || kit.id.slice(0, 8)}_2048.png`);
+  triggerBlobDownload(blob, filename);
   onProgress?.(100);
 
-  return { bytes: pngBytes, sha256 };
+  return { bytes: pngBytes, sha256, filename };
+}
+
+/**
+ * FUN-EXPORT-PNG: Generates and downloads lossless 2048x2048 RGBA 32-bit PNG texture (Jersey default).
+ */
+export async function exportKitPng2048(
+  kit: Kit,
+  onProgress?: (pct: number) => void
+): Promise<{ bytes: Uint8Array; sha256: string }> {
+  const res = await exportGarmentPng2048(kit, 'JERSEY', onProgress);
+  return { bytes: res.bytes, sha256: res.sha256 };
 }
 
 /**
  * FUN-EXPORT-ZIP & TEST-PAR-05: Generates interoperable kit_<id>.zip containing:
- * - texture.png (2048x2048 RGBA lossless)
- * - preview.png (512x512 RGBA minikit)
+ * - jersey.png (2048x2048 RGBA lossless)
+ * - shorts.png (2048x2048 RGBA lossless)
+ * - socks.png (2048x2048 RGBA lossless)
+ * - preview.png (512x512 RGBA full kit mockup)
  * - manifest.json (conforming strictly to schema kit-manifest-v1.json)
+ * - texture.png (retrocompatibility duplicate of jersey.png)
  */
 export async function exportKitInteroperableZip(
   kit: Kit,
   onProgress?: (pct: number) => void
 ): Promise<{ manifest: KitManifestV1; zipSizeBytes: number }> {
-  onProgress?.(10);
-  const texCanvas = document.createElement('canvas');
-  texCanvas.width = TEXTURE_SIZE;
-  texCanvas.height = TEXTURE_SIZE;
-  compositeKit2048(texCanvas, kit, { showUvGuides: false });
+  onProgress?.(5);
 
+  const garments = ensureKitGarments(kit);
+
+  // 1. Jersey 2048
+  const jerseyCanvas = document.createElement('canvas');
+  jerseyCanvas.width = TEXTURE_SIZE;
+  jerseyCanvas.height = TEXTURE_SIZE;
+  compositeJersey2048(jerseyCanvas, kit, { showUvGuides: false });
+  onProgress?.(20);
+
+  // 2. Shorts 2048
+  const shortsCanvas = document.createElement('canvas');
+  shortsCanvas.width = TEXTURE_SIZE;
+  shortsCanvas.height = TEXTURE_SIZE;
+  compositeShorts2048(shortsCanvas, kit, { showUvGuides: false });
   onProgress?.(35);
+
+  // 3. Socks 2048
+  const socksCanvas = document.createElement('canvas');
+  socksCanvas.width = TEXTURE_SIZE;
+  socksCanvas.height = TEXTURE_SIZE;
+  compositeSocks2048(socksCanvas, kit, { showUvGuides: false });
+  onProgress?.(50);
+
+  // 4. Preview 512 (Full Kit Mockup)
   const prevCanvas = document.createElement('canvas');
   prevCanvas.width = 512;
   prevCanvas.height = 512;
-  renderMinikitPreview512(prevCanvas, texCanvas, kit);
+  renderFullKitMockup512(prevCanvas, kit);
+  onProgress?.(65);
 
-  onProgress?.(55);
-  const [textureBytes, previewBytes] = await Promise.all([
-    canvasToUint8ArrayPng(texCanvas),
+  // Convert canvases to PNG bytes
+  const [jerseyBytes, shortsBytes, socksBytes, previewBytes] = await Promise.all([
+    canvasToUint8ArrayPng(jerseyCanvas),
+    canvasToUint8ArrayPng(shortsCanvas),
+    canvasToUint8ArrayPng(socksCanvas),
     canvasToUint8ArrayPng(prevCanvas),
   ]);
+  onProgress?.(80);
 
-  onProgress?.(75);
-  const [textureSha256, previewSha256] = await Promise.all([
-    computeSha256Hex(textureBytes),
+  // Compute checksums
+  const [jerseySha256, shortsSha256, socksSha256, previewSha256] = await Promise.all([
+    computeSha256Hex(jerseyBytes),
+    computeSha256Hex(shortsBytes),
+    computeSha256Hex(socksBytes),
     computeSha256Hex(previewBytes),
   ]);
 
   const cleanLayers = JSON.parse(JSON.stringify(kit.layers));
+  const cleanGarments = JSON.parse(JSON.stringify(garments));
   const cleanMetadata = JSON.parse(JSON.stringify(kit.metadata));
 
   const manifest: KitManifestV1 = {
@@ -137,20 +185,24 @@ export async function exportKitInteroperableZip(
     exportTimestamp: new Date().toISOString(),
     generator: {
       platform: 'OpenKitMaker-Web',
-      version: '1.0.0',
-      buildNumber: '100',
+      version: '1.1.0',
+      buildNumber: '110',
     },
     dimensions: {
       width: 2048,
       height: 2048,
     },
     checksums: {
-      textureSha256,
+      textureSha256: jerseySha256,
       previewSha256,
+      jerseySha256,
+      shortsSha256,
+      socksSha256,
     },
     kitData: {
       templateId: kit.templateId,
       layers: cleanLayers,
+      garments: cleanGarments,
       metadata: cleanMetadata,
     },
   };
@@ -161,9 +213,12 @@ export async function exportKitInteroperableZip(
   onProgress?.(90);
   const zipped = zipSync(
     {
-      'texture.png': textureBytes,
+      'jersey.png': jerseyBytes,
+      'shorts.png': shortsBytes,
+      'socks.png': socksBytes,
       'preview.png': previewBytes,
       'manifest.json': manifestBytes,
+      'texture.png': jerseyBytes,
     },
     { level: 6 }
   );
@@ -201,7 +256,7 @@ export async function importKitFromZip(file: File): Promise<{
   if (
     !manifest.kitId ||
     !manifest.kitData ||
-    !Array.isArray(manifest.kitData.layers) ||
+    (!Array.isArray(manifest.kitData.layers) && !manifest.kitData.garments) ||
     manifest.dimensions?.width !== 2048 ||
     manifest.dimensions?.height !== 2048
   ) {
@@ -209,14 +264,15 @@ export async function importKitFromZip(file: File): Promise<{
   }
 
   let checksumVerified = false;
-  const textureEntry = unzipped['texture.png'];
-  if (textureEntry && manifest.checksums?.textureSha256) {
-    const computedTexSha = await computeSha256Hex(textureEntry);
-    checksumVerified =
-      computedTexSha.toLowerCase() === manifest.checksums.textureSha256.toLowerCase();
+  const jerseyEntry = unzipped['jersey.png'] || unzipped['texture.png'];
+  if (jerseyEntry && (manifest.checksums?.jerseySha256 || manifest.checksums?.textureSha256)) {
+    const targetSha = manifest.checksums.jerseySha256 || manifest.checksums.textureSha256;
+    const computedTexSha = await computeSha256Hex(jerseyEntry);
+    checksumVerified = computedTexSha.toLowerCase() === targetSha.toLowerCase();
   }
 
   const now = new Date().toISOString();
+  const layers = manifest.kitData.layers || manifest.kitData.garments?.jersey.layers || [];
   const importedKit: Kit = {
     id: manifest.kitId || generateUuidV4(),
     name: manifest.name || 'Kit Importato',
@@ -224,30 +280,25 @@ export async function importKitFromZip(file: File): Promise<{
     createdAt: manifest.exportTimestamp || now,
     updatedAt: now,
     templateId: manifest.kitData.templateId || 'tpl-home-vertical-classic',
-    layers: manifest.kitData.layers,
+    garments: manifest.kitData.garments || undefined,
+    layers,
     metadata: manifest.kitData.metadata || {
       author: manifest.generator?.platform || 'OpenKitMaker-Native',
-      version: manifest.version || '1.0.0',
+      version: manifest.version || '1.1.0',
       tags: [manifest.category || 'HOME', 'Importato ZIP'],
       finishType: 'PRO_VAPOR',
       lightingPreset: 'studio',
     },
   };
 
-  // Re-generate 512x512 thumbnail so SCR-HOME and SCR-SAVED have an immediate preview
-  const texCanvas = document.createElement('canvas');
-  texCanvas.width = TEXTURE_SIZE;
-  texCanvas.height = TEXTURE_SIZE;
-  compositeKit2048(texCanvas, importedKit);
+  ensureKitGarments(importedKit);
 
+  // Generate 512x512 Full Kit thumbnail
   const prevCanvas = document.createElement('canvas');
   prevCanvas.width = 512;
   prevCanvas.height = 512;
-  importedKit.metadata.thumbnailDataUrl = renderMinikitPreview512(
-    prevCanvas,
-    texCanvas,
-    importedKit
-  );
+  renderFullKitMockup512(prevCanvas, importedKit);
+  importedKit.metadata.thumbnailDataUrl = prevCanvas.toDataURL('image/png');
 
   return {
     kit: importedKit,

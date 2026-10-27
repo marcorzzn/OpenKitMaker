@@ -12,25 +12,34 @@ Quando l'utente richiede l'esportazione completa del kit (`FUN-EXPORT-ZIP`), vie
 ```text
 kit_<id>.zip
 │
-├── texture.png            # Texture distesa finale ad alta risoluzione (2048×2048)
-├── preview.png            # Anteprima minikit 2D (512×512)
-└── manifest.json          # Metadati, configurazione completa del kit e checksum SHA-256
+├── jersey.png             # Texture 2048×2048 ad alta definizione per la Maglia
+├── shorts.png             # Texture 2048×2048 ad alta definizione per i Pantaloncini
+├── socks.png              # Texture 2048×2048 ad alta definizione per i Calzettoni
+├── preview.png            # Anteprima 2D Full Kit / Minikit (512×512)
+├── manifest.json          # Metadati, configurazione completa dei 3 capi e checksum SHA-256
+└── texture.png            # (Retrocompatibilità con v1.0: duplicato di jersey.png)
 ```
+
+### Esportazione Singolo Capo (`FUN-EXPORT-SINGLE`)
+L'utente può esportare individualmente la texture del capo attivo correntemente visualizzato nell'editor:
+- `jersey_<id>_2048.png`: esportazione texture della sola maglia (2048×2048 RGBA).
+- `shorts_<id>_2048.png`: esportazione texture dei soli pantaloncini (2048×2048 RGBA).
+- `socks_<id>_2048.png`: esportazione texture dei soli calzettoni (2048×2048 RGBA).
 
 ---
 
 ## 2. Requisiti delle Immagini
 
-### `texture.png`
+### `jersey.png`, `shorts.png`, `socks.png`
 - **Risoluzione**: Esattamente **2048 × 2048 pixel**.
 - **Canali**: 32-bit RGBA (8 bit per canale).
 - **Spazio colore**: sRGB standard.
-- **Formato di compressione**: PNG lossless, livello di compressione standard (deflate).
+- **Formato di compressione**: PNG lossless, compressione Deflate.
 
 ### `preview.png`
 - **Risoluzione**: Esattamente **512 × 512 pixel**.
-- **Canali**: 32-bit RGBA con sfondo trasparente o gradiente neutro.
-- **Formato di compressione**: PNG lossless ottimizzato.
+- **Canali**: 32-bit RGBA con sfondo neutro studio card.
+- **Contenuto**: Composizione visiva del Full Kit (Maglia + Pantaloncini + Calzettoni).
 
 ---
 

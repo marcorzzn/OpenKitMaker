@@ -3,7 +3,17 @@
   import { onMount } from 'svelte';
   import { studio } from '../state/studio.svelte';
   import { i18n } from '../i18n/it';
-  import { compositeKit2048, renderMinikitPreview512 } from '../lib/compositor2d';
+  import {
+    compositeJersey2048,
+    compositeShorts2048,
+    compositeSocks2048,
+    compositeGarment2048,
+    renderJerseyMockup512,
+    renderShortsMockup512,
+    renderSocksMockup512,
+    renderFullKitMockup512,
+    TEXTURE_SIZE,
+  } from '../lib/compositor2d';
   import ColorPickerHsv from './ColorPickerHsv.svelte';
   import Viewport3D from './Viewport3D.svelte';
   import type {
@@ -15,6 +25,7 @@
     BadgeShape,
     BadgePosition,
     KitCategory,
+    GarmentType,
   } from '../types/kit';
 
   let canvas2dRef = $state<HTMLCanvasElement | null>(null);
@@ -22,16 +33,32 @@
   let displayMode2d = $state<'MOCKUP' | 'UV'>('MOCKUP');
   let zoom2d = $state<number>(1.0);
 
-  const componentRailItems: { type: LayerType; label: string; shortCode: string }[] = [
+  let jerseyCanvas = $state<HTMLCanvasElement | null>(null);
+  let shortsCanvas = $state<HTMLCanvasElement | null>(null);
+  let socksCanvas = $state<HTMLCanvasElement | null>(null);
+
+  const allRailItems: { type: LayerType; label: string; shortCode: string }[] = [
     { type: 'BASE', label: 'Base', shortCode: 'BAS' },
     { type: 'PATTERN', label: 'Strisce', shortCode: 'STR' },
-    { type: 'COLLAR', label: 'Colletto', shortCode: 'COL' },
+    { type: 'COLLAR', label: 'Dettaglio', shortCode: 'DET' },
     { type: 'SLEEVES', label: 'Maniche', shortCode: 'MAN' },
     { type: 'BADGE', label: 'Stemma', shortCode: 'STM' },
     { type: 'SPONSOR', label: 'Sponsor', shortCode: 'SPO' },
     { type: 'TEXT_NAME', label: 'Nome', shortCode: 'NOM' },
     { type: 'NUMBER', label: 'Numero', shortCode: 'NUM' },
   ];
+
+  const garmentAllowedTypes: Record<GarmentType, LayerType[]> = {
+    JERSEY: ['BASE', 'PATTERN', 'COLLAR', 'SLEEVES', 'BADGE', 'SPONSOR', 'TEXT_NAME', 'NUMBER'],
+    SHORTS: ['BASE', 'PATTERN', 'BADGE', 'NUMBER'],
+    SOCKS: ['BASE', 'PATTERN', 'COLLAR'],
+  };
+
+  let componentRailItems = $derived(
+    studio.activeGarmentType !== 'ALL'
+      ? allRailItems.filter((item) => garmentAllowedTypes[studio.activeGarmentType].includes(item.type))
+      : allRailItems
+  );
 
   const blendModes: BlendMode[] = ['NORMAL', 'MULTIPLY', 'OVERLAY'];
 
@@ -76,28 +103,75 @@
 
   const kitCategories: KitCategory[] = ['HOME', 'AWAY', 'THIRD', 'GK', 'SPECIAL'];
 
-  function redraw2DTexture() {
-    if (!canvas2dRef) return;
-    const t0 = performance.now();
-    compositeKit2048(canvas2dRef, studio.activeKit, {
-      showUvGuides: studio.showUvGuides,
-    });
-    if (mockupCanvasRef) {
-      renderMinikitPreview512(mockupCanvasRef, canvas2dRef, studio.activeKit);
+  function ensureOffscreenCanvases() {
+    if (!jerseyCanvas) {
+      jerseyCanvas = document.createElement('canvas');
+      jerseyCanvas.width = TEXTURE_SIZE;
+      jerseyCanvas.height = TEXTURE_SIZE;
     }
+    if (!shortsCanvas) {
+      shortsCanvas = document.createElement('canvas');
+      shortsCanvas.width = TEXTURE_SIZE;
+      shortsCanvas.height = TEXTURE_SIZE;
+    }
+    if (!socksCanvas) {
+      socksCanvas = document.createElement('canvas');
+      socksCanvas.width = TEXTURE_SIZE;
+      socksCanvas.height = TEXTURE_SIZE;
+    }
+  }
+
+  function redraw2DTexture() {
+    ensureOffscreenCanvases();
+    const t0 = performance.now();
+
+    // 1. Composite all 3 garments in memory
+    if (jerseyCanvas) {
+      compositeJersey2048(jerseyCanvas, studio.activeKit, { showUvGuides: studio.showUvGuides });
+    }
+    if (shortsCanvas) {
+      compositeShorts2048(shortsCanvas, studio.activeKit, { showUvGuides: studio.showUvGuides });
+    }
+    if (socksCanvas) {
+      compositeSocks2048(socksCanvas, studio.activeKit, { showUvGuides: studio.showUvGuides });
+    }
+
+    // 2. Render visible 2048x2048 UV texture
+    if (canvas2dRef) {
+      const activeGarment = studio.activeGarmentType === 'ALL' ? 'JERSEY' : studio.activeGarmentType;
+      compositeGarment2048(canvas2dRef, studio.activeKit, activeGarment, {
+        showUvGuides: studio.showUvGuides,
+      });
+    }
+
+    // 3. Render 2D Mockup
+    if (mockupCanvasRef) {
+      if (studio.activeGarmentType === 'JERSEY' && jerseyCanvas) {
+        renderJerseyMockup512(mockupCanvasRef, jerseyCanvas, studio.activeKit);
+      } else if (studio.activeGarmentType === 'SHORTS' && shortsCanvas) {
+        renderShortsMockup512(mockupCanvasRef, shortsCanvas, studio.activeKit);
+      } else if (studio.activeGarmentType === 'SOCKS' && socksCanvas) {
+        renderSocksMockup512(mockupCanvasRef, socksCanvas, studio.activeKit);
+      } else {
+        renderFullKitMockup512(mockupCanvasRef, studio.activeKit);
+      }
+    }
+
     const elapsed = performance.now() - t0;
     studio.lastCompositeTimeMs = Math.round(elapsed * 10) / 10;
   }
 
   onMount(() => {
+    ensureOffscreenCanvases();
     redraw2DTexture();
   });
 
-  // Re-run 2048x2048 compositor whenever textureRevision or UV guide toggle changes
+  // Re-run 2048x2048 compositor whenever textureRevision, garment type, or UV guide toggle changes
   $effect(() => {
     const _rev = studio.textureRevision;
     const _guides = studio.showUvGuides;
-    if (canvas2dRef && _rev >= 0 && typeof _guides === 'boolean') {
+    const _garment = studio.activeGarmentType;
+    if (canvas2dRef && _rev >= 0 && typeof _guides === 'boolean' && _garment) {
       redraw2DTexture();
     }
   });
@@ -190,53 +264,120 @@
     </div>
   </div>
 
+  <!-- Horizontal Garment Selector Bar & 3D Mannequin Switcher (FASE 3 / FUN-EDIT-SHORTS / FUN-EDIT-SOCKS / FUN-MANNEQUIN-TOGGLE) -->
+  <div class="bg-[#141B26] border border-[#2E3D56] rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+    <div class="flex items-center gap-2 overflow-x-auto">
+      <span class="text-xs font-bold uppercase tracking-wider text-[#64748B] mr-1 hidden sm:inline">Capo da Modificare:</span>
+
+      <button
+        type="button"
+        onclick={() => studio.setGarmentType('JERSEY')}
+        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'JERSEY'
+          ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
+          : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
+      >
+        <span class="text-base">👕</span>
+        <span>Maglia</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => studio.setGarmentType('SHORTS')}
+        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SHORTS'
+          ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
+          : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
+      >
+        <span class="text-base">🩳</span>
+        <span>Pantaloncini</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => studio.setGarmentType('SOCKS')}
+        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SOCKS'
+          ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
+          : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
+      >
+        <span class="text-base">🧦</span>
+        <span>Calzettoni</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => studio.setGarmentType('ALL')}
+        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'ALL'
+          ? 'bg-[#00C49F] text-[#0F141C] font-extrabold shadow-md shadow-[#00C49F]/30 ring-2 ring-white'
+          : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
+      >
+        <span class="text-base">👤</span>
+        <span>Vista Completo</span>
+      </button>
+    </div>
+
+    <!-- Mannequin Toggle Switch (FUN-MANNEQUIN-TOGGLE) -->
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        onclick={() => studio.toggleMannequin()}
+        class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-2 cursor-pointer {studio.showMannequin
+          ? 'bg-[#253146] border-[#00C49F] text-[#00C49F]'
+          : 'bg-[#1A2230] border-[#2E3D56] text-[#64748B] hover:text-[#94A3B8]'}"
+      >
+        <span>👤</span>
+        <span>Mostra Manichino</span>
+        <span class="w-2.5 h-2.5 rounded-full {studio.showMannequin ? 'bg-[#00C49F] shadow-[0_0_8px_#00C49F]' : 'bg-[#64748B]'}"></span>
+      </button>
+    </div>
+  </div>
+
   <!-- Main Editor Studio Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-    <!-- Left Column: Component Icon Rail + Layer Stack + Inspector + HSV Picker (lg:col-span-4) -->
-    <div class="lg:col-span-4 bg-[#1A2230] border border-[#2E3D56] rounded-xl overflow-hidden flex flex-col">
-      <!-- Component Icon Rail (Base, Strisce, Colletto, Maniche, Stemma, Sponsor, Nome, Numero) -->
-      <div class="p-2 bg-[#0F141C] border-b border-[#2E3D56] grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-4 gap-1.5">
-        {#each componentRailItems as item (item.type)}
-          {@const isSelectedType = studio.selectedLayer?.type === item.type}
-          <button
-            type="button"
-            onclick={() => studio.selectLayerByType(item.type)}
-            class="px-2 py-2 rounded-lg text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 {isSelectedType
-              ? 'bg-[#0F52BA] text-white'
-              : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
-          >
-            <span class="text-[10px] font-mono-tabular opacity-75">{item.shortCode}</span>
-            <span class="text-xs font-semibold whitespace-nowrap">{item.label}</span>
-          </button>
-        {/each}
-      </div>
-
-      <div class="p-4 space-y-5 max-h-[calc(100vh-180px)] overflow-y-auto">
-        <!-- Layer Stack Manager (FUN-MANAGE-LAYERS) -->
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-white">
-              Pila Livelli ({studio.activeKit.layers.length})
-            </span>
+    {#if studio.activeGarmentType !== 'ALL'}
+      <!-- Left Column: Component Icon Rail + Layer Stack + Inspector + HSV Picker (lg:col-span-4) -->
+      <div class="lg:col-span-4 bg-[#1A2230] border border-[#2E3D56] rounded-xl overflow-hidden flex flex-col">
+        <!-- Component Icon Rail -->
+        <div class="p-2 bg-[#0F141C] border-b border-[#2E3D56] grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-4 gap-1.5">
+          {#each componentRailItems as item (item.type)}
+            {@const isSelectedType = studio.selectedLayer?.type === item.type}
             <button
               type="button"
-              onclick={() =>
-                studio.addNewLayer(studio.selectedLayer?.type || 'PATTERN')}
-              class="px-2.5 py-1 text-xs font-semibold text-[#00C49F] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
+              onclick={() => studio.selectLayerByType(item.type)}
+              class="px-2 py-2 rounded-lg text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 {isSelectedType
+                ? 'bg-[#0F52BA] text-white'
+                : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
             >
-              + Nuovo Livello
+              <span class="text-[10px] font-mono-tabular opacity-75">{item.shortCode}</span>
+              <span class="text-xs font-semibold whitespace-nowrap">{item.label}</span>
             </button>
-          </div>
+          {/each}
+        </div>
 
-          <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
-            {#each [...studio.activeKit.layers].sort((a, b) => b.zIndex - a.zIndex) as layer (layer.id)}
-              {@const isCurrent = studio.selectedLayer?.id === layer.id}
-              <div
-                class="flex flex-col gap-2.5 p-4 rounded-xl border shadow-sm transition-all {isCurrent
-                  ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/30'
-                  : 'bg-[#0F141C] border-[#2E3D56] hover:border-[#64748B]'}"
+        <div class="p-4 space-y-5 max-h-[calc(100vh-180px)] overflow-y-auto">
+          <!-- Layer Stack Manager (FUN-MANAGE-LAYERS) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white">
+                Pila Livelli {studio.activeGarmentType === 'JERSEY' ? 'Maglia' : studio.activeGarmentType === 'SHORTS' ? 'Pantaloncini' : 'Calzettoni'} ({studio.activeLayers.length})
+              </span>
+              <button
+                type="button"
+                onclick={() =>
+                  studio.addNewLayer(studio.selectedLayer?.type || 'PATTERN')}
+                class="px-2.5 py-1 text-xs font-semibold text-[#00C49F] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
               >
-                <div class="flex items-center justify-between gap-3">
+                + Nuovo Livello
+              </button>
+            </div>
+
+            <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {#each [...studio.activeLayers].sort((a, b) => b.zIndex - a.zIndex) as layer (layer.id)}
+                {@const isCurrent = studio.selectedLayer?.id === layer.id}
+                <div
+                  class="flex flex-col gap-2.5 p-4 rounded-xl border shadow-sm transition-all {isCurrent
+                    ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/30'
+                    : 'bg-[#0F141C] border-[#2E3D56] hover:border-[#64748B]'}"
+                >
+                  <div class="flex items-center justify-between gap-3">
                   <button
                     type="button"
                     onclick={() => (studio.selectedLayerId = layer.id)}
@@ -713,10 +854,11 @@
         {/if}
       </div>
     </div>
+    {/if}
 
-    <!-- Right Column: 2D Texture Canvas (2048x2048) & 3D PBR Viewport (lg:col-span-8) -->
+    <!-- Right Column: 2D Texture Canvas (2048x2048) & 3D PBR Viewport (lg:col-span-8 or col-span-12) -->
     <div
-      class="lg:col-span-8 grid gap-4 {studio.editorViewMode === 'SPLIT'
+      class="{studio.activeGarmentType === 'ALL' ? 'lg:col-span-12' : 'lg:col-span-8'} grid gap-4 {studio.editorViewMode === 'SPLIT'
         ? 'grid-cols-1 xl:grid-cols-2'
         : 'grid-cols-1'}"
     >
@@ -736,7 +878,7 @@
                 ? 'bg-[#0F52BA] text-white shadow-sm'
                 : 'text-[#94A3B8] hover:text-white'}"
             >
-              Mockup Maglia 2D
+              Mockup 2D
             </button>
             <button
               type="button"
@@ -792,7 +934,7 @@
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-[#64748B] font-mono-tabular">
-          <span>{displayMode2d === 'MOCKUP' ? 'Sagome Fronte & Retro con ombreggiatura e maniche sagomate' : 'Quadranti UV: Fronte · Retro · Manica SX · Manica DX'}</span>
+          <span>{displayMode2d === 'MOCKUP' ? 'Sagome con ombreggiatura e mockup realistico' : 'Mappa Texture 2048×2048 RGBA'}</span>
           <span>{displayMode2d === 'MOCKUP' ? 'Mockup 512×512' : '2048×2048 RGBA'}</span>
         </div>
       </div>
@@ -808,11 +950,51 @@
           <div class="flex-1 min-h-[460px]">
             <Viewport3D
               sourceCanvas={canvas2dRef}
+              jerseyCanvas={jerseyCanvas}
+              shortsCanvas={shortsCanvas}
+              socksCanvas={socksCanvas}
               textureRevision={studio.textureRevision}
             />
           </div>
         </div>
       {/if}
     </div>
+
+    {#if studio.activeGarmentType === 'ALL'}
+      <!-- Full Kit Overview & Export CTA Card when in Vista Completo -->
+      <div class="col-span-12 bg-[#1A2230] border border-[#2E3D56] rounded-xl p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-[#00C49F]/10 border border-[#00C49F]/30 flex items-center justify-center text-2xl">
+            👤
+          </div>
+          <div>
+            <div class="text-sm font-bold text-white flex items-center gap-2">
+              <span>Panoramica Kit Completo Ufficiale</span>
+              <span class="px-2 py-0.5 text-[10px] font-semibold bg-[#00C49F]/20 text-[#00C49F] rounded-full border border-[#00C49F]/40">Pronto per Esportazione</span>
+            </div>
+            <div class="text-xs text-[#94A3B8] mt-0.5">
+              Maglia ({studio.activeKit.garments?.jersey.layers.length ?? 0} liv.) · Pantaloncini ({studio.activeKit.garments?.shorts.layers.length ?? 0} liv.) · Calzettoni ({studio.activeKit.garments?.socks.layers.length ?? 0} liv.)
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            onclick={() => studio.setGarmentType('JERSEY')}
+            class="px-4 py-2.5 text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-lg transition-colors cursor-pointer"
+          >
+            ← Modifica Singoli Capi
+          </button>
+          <button
+            type="button"
+            onclick={() => studio.navigateTo('SCR-EXPORT')}
+            class="px-5 py-2.5 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-lg shadow-md shadow-[#00C49F]/20 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span>Esporta Kit Completo (ZIP)</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+    {/if}
   </div>
 </section>

@@ -18,8 +18,22 @@ interface Kit {
   createdAt: string;             // ISO-8601 UTC
   updatedAt: string;             // ISO-8601 UTC
   templateId: string;            // ID del template di origine
-  layers: Layer[];               // Elenco ordinato dei layer (dal basso verso l'alto)
+  garments: {
+    jersey: Garment;             // Capo 1: Maglia da gara
+    shorts: Garment;             // Capo 2: Pantaloncini
+    socks: Garment;              // Capo 3: Calzettoni
+  };
+  layers: Layer[];               // Compatibilità diretta con i layer del capo attivo / maglia
   metadata: KitMetadata;         // Metadati descrittivi e di generazione
+}
+
+type GarmentType = "JERSEY" | "SHORTS" | "SOCKS";
+
+interface Garment {
+  type: GarmentType;
+  layers: Layer[];               // Elenco ordinato dei layer del singolo capo
+  baseColor: string;             // Colore primario del capo (HEX)
+  secondaryColor?: string;       // Colore secondario di accento (HEX)
 }
 
 type KitCategory = "HOME" | "AWAY" | "THIRD" | "GK" | "SPECIAL";

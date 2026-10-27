@@ -1,4 +1,4 @@
-﻿// Implements: SCR-CATALOG / FUN-SELECT-TEMPLATE
+// Implements: SCR-CATALOG / FUN-SELECT-TEMPLATE
 package com.openkitmaker.android.ui.catalog
 
 import androidx.compose.foundation.background
@@ -16,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -120,12 +122,31 @@ fun CatalogScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "${tpl.name} · ${tpl.category.labelIt}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${tpl.name} · ${tpl.category.labelIt}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        if (tpl.id.startsWith("tpl-fullkit")) {
+                            Surface(
+                                color = Color(0xFF1E3A8A),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "👕🩳🧦 Full Kit",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF93C5FD),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
                         text = tpl.description,
                         style = MaterialTheme.typography.bodySmall,

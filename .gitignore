@@ -41,6 +41,7 @@ scratch/
 
 # Large binary audit artifacts
 00_audit/*.zip
+*source.glb*
 
 # OS Generated
 .DS_Store

@@ -6,10 +6,16 @@
   import type { LightingPreset } from '../types/kit';
 
   let {
-    sourceCanvas,
+    sourceCanvas = null,
+    jerseyCanvas = null,
+    shortsCanvas = null,
+    socksCanvas = null,
     textureRevision = 0,
   }: {
-    sourceCanvas: HTMLCanvasElement | null;
+    sourceCanvas?: HTMLCanvasElement | null;
+    jerseyCanvas?: HTMLCanvasElement | null;
+    shortsCanvas?: HTMLCanvasElement | null;
+    socksCanvas?: HTMLCanvasElement | null;
     textureRevision: number;
   } = $props();
 
@@ -39,7 +45,7 @@
 
       const instance = module3d.createKit3DEngine(
         mountContainer,
-        sourceCanvas,
+        jerseyCanvas || sourceCanvas,
         studio.lightingPreset
       );
 
@@ -51,6 +57,11 @@
 
       engine = instance;
       engine.setFinishType(studio.activeKit.metadata?.finishType || 'PRO_VAPOR');
+      engine.setMannequinVisible(studio.showMannequin);
+      engine.setGarmentMode(studio.activeGarmentType);
+      if (shortsCanvas) engine.updateShortsTexture(shortsCanvas);
+      if (socksCanvas) engine.updateSocksTexture(socksCanvas);
+
       isLoadingEngine = false;
       isInitializing = false;
 
@@ -88,14 +99,30 @@
     engine = null;
   });
 
-  // Reactively push 2048x2048 Canvas updates to 3D PBR texture
+  // Reactively push Canvas updates and state changes to 3D PBR engine
   $effect(() => {
     if (!engine && !isInitializing && mountContainer) {
       initEngine();
     }
     const _rev = textureRevision;
-    if (engine && sourceCanvas && _rev >= 0) {
-      engine.updateCanvasTexture(sourceCanvas);
+    const _mannequin = studio.showMannequin;
+    const _garment = studio.activeGarmentType;
+
+    if (engine) {
+      engine.setMannequinVisible(_mannequin);
+      engine.setGarmentMode(_garment);
+
+      if (jerseyCanvas) {
+        engine.updateJerseyTexture(jerseyCanvas);
+      } else if (sourceCanvas) {
+        engine.updateCanvasTexture(sourceCanvas);
+      }
+      if (shortsCanvas) {
+        engine.updateShortsTexture(shortsCanvas);
+      }
+      if (socksCanvas) {
+        engine.updateSocksTexture(socksCanvas);
+      }
     }
   });
 

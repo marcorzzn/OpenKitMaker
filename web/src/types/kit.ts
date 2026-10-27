@@ -127,6 +127,21 @@ export interface KitMetadata {
   decals?: Decal[];
 }
 
+export type GarmentType = 'JERSEY' | 'SHORTS' | 'SOCKS';
+
+export interface Garment {
+  type: GarmentType;
+  layers: Layer[];
+  baseColor: string;
+  secondaryColor?: string;
+}
+
+export interface KitGarments {
+  jersey: Garment;
+  shorts: Garment;
+  socks: Garment;
+}
+
 export interface Kit {
   id: string; // UUID v4
   name: string;
@@ -134,7 +149,8 @@ export interface Kit {
   createdAt: string; // ISO-8601 UTC
   updatedAt: string; // ISO-8601 UTC
   templateId: string;
-  layers: Layer[]; // Ordered bottom to top
+  garments?: KitGarments;
+  layers: Layer[]; // Ordered bottom to top (active jersey layers / backward compatibility)
   metadata: KitMetadata;
 }
 
@@ -169,10 +185,14 @@ export interface KitManifestV1 {
   checksums: {
     textureSha256: string;
     previewSha256: string;
+    jerseySha256?: string;
+    shortsSha256?: string;
+    socksSha256?: string;
   };
   kitData: {
     templateId: string;
     layers: Layer[];
+    garments?: KitGarments;
     metadata?: KitMetadata;
   };
 }

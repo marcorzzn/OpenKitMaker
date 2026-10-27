@@ -9,6 +9,11 @@ import type { LightingPreset } from '../types/kit';
 
 export interface Kit3DEngineController {
   updateCanvasTexture: (sourceCanvas: HTMLCanvasElement) => void;
+  updateJerseyTexture: (canvas: HTMLCanvasElement) => void;
+  updateShortsTexture: (canvas: HTMLCanvasElement) => void;
+  updateSocksTexture: (canvas: HTMLCanvasElement) => void;
+  setMannequinVisible: (visible: boolean) => void;
+  setGarmentMode: (mode: 'JERSEY' | 'SHORTS' | 'SOCKS' | 'ALL') => void;
   setLightingPreset: (preset: LightingPreset) => void;
   setFinishType: (finish: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN') => void;
   setAutoRotate: (enabled: boolean) => void;
@@ -352,27 +357,66 @@ export function createKit3DEngine(
   controls.maxPolarAngle = Math.PI * 0.75;
   controls.update();
 
-  // Dynamic 2048x2048 CanvasTexture bound to the 2D compositor (with fallback)
-  const effectiveCanvas = sourceCanvas2048 || createFallbackCanvas();
-  const kitTexture = new THREE.CanvasTexture(effectiveCanvas);
-  kitTexture.colorSpace = THREE.SRGBColorSpace;
-  kitTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  kitTexture.needsUpdate = true;
+  // Dynamic 2048x2048 CanvasTextures for Jersey, Shorts, and Socks
+  const effectiveJerseyCanvas = sourceCanvas2048 || createFallbackCanvas();
+  const jerseyTexture = new THREE.CanvasTexture(effectiveJerseyCanvas);
+  jerseyTexture.colorSpace = THREE.SRGBColorSpace;
+  jerseyTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  jerseyTexture.needsUpdate = true;
+
+  const shortsTexture = new THREE.CanvasTexture(createFallbackCanvas());
+  shortsTexture.colorSpace = THREE.SRGBColorSpace;
+  shortsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  shortsTexture.needsUpdate = true;
+
+  const socksTexture = new THREE.CanvasTexture(createFallbackCanvas());
+  socksTexture.colorSpace = THREE.SRGBColorSpace;
+  socksTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  socksTexture.needsUpdate = true;
 
   const normalTexture = createProceduralFabricNormalMap();
 
-  const kitMaterial = new THREE.MeshPhysicalMaterial({
-    map: kitTexture,
+  // PBR Sportswear Materials (roughness 0.8, metalness 0.0, micro-weave normal map)
+  const jerseyMaterial = new THREE.MeshPhysicalMaterial({
+    map: jerseyTexture,
     normalMap: normalTexture,
-    normalScale: new THREE.Vector2(0.28, 0.28),
-    roughness: 0.58,
-    metalness: 0.04,
-    sheen: 0.65,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    roughness: 0.8,
+    metalness: 0.0,
+    sheen: 0.45,
     sheenRoughness: 0.5,
     sheenColor: new THREE.Color('#FFFFFF'),
-    clearcoat: 0.06,
-    clearcoatRoughness: 0.4,
     side: THREE.DoubleSide,
+  });
+
+  const shortsMaterial = new THREE.MeshPhysicalMaterial({
+    map: shortsTexture,
+    normalMap: normalTexture,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    roughness: 0.8,
+    metalness: 0.0,
+    sheen: 0.45,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color('#FFFFFF'),
+    side: THREE.DoubleSide,
+  });
+
+  const socksMaterial = new THREE.MeshPhysicalMaterial({
+    map: socksTexture,
+    normalMap: normalTexture,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    roughness: 0.8,
+    metalness: 0.0,
+    sheen: 0.45,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color('#FFFFFF'),
+    side: THREE.DoubleSide,
+  });
+
+  const mannequinMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#1E293B'),
+    roughness: 0.35,
+    metalness: 0.75,
   });
 
   const standMaterial = new THREE.MeshStandardMaterial({
@@ -381,8 +425,83 @@ export function createKit3DEngine(
     metalness: 0.8,
   });
 
-  const jerseyGroup = buildTailoredJerseyMeshGroup(kitMaterial, standMaterial);
+  // Procedural standalone fallback jersey group (shown immediately until GLB loads)
+  const jerseyGroup = buildTailoredJerseyMeshGroup(jerseyMaterial, standMaterial);
   scene.add(jerseyGroup);
+
+  // Clean Room Full Kit GLB Nodes
+  let fullKitRoot: THREE.Group | null = null;
+  let jerseyNode: THREE.Object3D | null = null;
+  let shortsNode: THREE.Object3D | null = null;
+  let socksNode: THREE.Object3D | null = null;
+  let mannequinNode: THREE.Object3D | null = null;
+
+  let currentGarmentMode: 'JERSEY' | 'SHORTS' | 'SOCKS' | 'ALL' = 'ALL';
+  let currentMannequinVisible = true;
+
+  function applyGarmentVisibility() {
+    if (jerseyNode) {
+      jerseyNode.visible = currentGarmentMode === 'JERSEY' || currentGarmentMode === 'ALL';
+    }
+    if (shortsNode) {
+      shortsNode.visible = currentGarmentMode === 'SHORTS' || currentGarmentMode === 'ALL';
+    }
+    if (socksNode) {
+      socksNode.visible = currentGarmentMode === 'SOCKS' || currentGarmentMode === 'ALL';
+    }
+    if (mannequinNode) {
+      mannequinNode.visible = currentMannequinVisible;
+    }
+  }
+
+  // Load Clean Room Full Kit Model (/models/kit_full_outfit_clean.glb)
+  gltfLoader.load(
+    '/models/kit_full_outfit_clean.glb',
+    (gltf) => {
+      if (disposed) return;
+      fullKitRoot = gltf.scene;
+      fullKitRoot.position.set(0, -0.15, 0);
+      fullKitRoot.scale.set(1.48, 1.48, 1.48);
+
+      fullKitRoot.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          mesh.castShadow = !isSoftwareGl;
+          mesh.receiveShadow = true;
+          const matName = ((mesh.material as THREE.Material)?.name || '').toLowerCase();
+          const nodeName = (mesh.name || mesh.parent?.name || '').toLowerCase();
+
+          if (nodeName.includes('jersey') || matName.includes('jersey')) {
+            mesh.material = jerseyMaterial;
+            if (!jerseyNode) jerseyNode = mesh.parent?.name === 'Jersey' ? mesh.parent : mesh;
+          } else if (nodeName.includes('shorts') || matName.includes('shorts')) {
+            mesh.material = shortsMaterial;
+            if (!shortsNode) shortsNode = mesh.parent?.name === 'Shorts' ? mesh.parent : mesh;
+          } else if (nodeName.includes('socks') || matName.includes('socks')) {
+            mesh.material = socksMaterial;
+            if (!socksNode) socksNode = mesh.parent?.name === 'Socks' ? mesh.parent : mesh;
+          } else if (nodeName.includes('mannequin') || matName.includes('mannequin')) {
+            mesh.material = mannequinMaterial;
+            if (!mannequinNode) mannequinNode = mesh.parent?.name === 'Mannequin' ? mesh.parent : mesh;
+          }
+        }
+      });
+
+      if (!jerseyNode) jerseyNode = fullKitRoot.getObjectByName('Jersey') || null;
+      if (!shortsNode) shortsNode = fullKitRoot.getObjectByName('Shorts') || null;
+      if (!socksNode) socksNode = fullKitRoot.getObjectByName('Socks') || null;
+      if (!mannequinNode) mannequinNode = fullKitRoot.getObjectByName('Mannequin') || null;
+
+      // Hide fallback single jersey group and render the full kit
+      jerseyGroup.visible = false;
+      scene.add(fullKitRoot);
+      applyGarmentVisibility();
+    },
+    undefined,
+    (err) => {
+      console.warn('Fallback: procedurale attivo, caricamento GLB:', err);
+    }
+  );
 
   // Soft contact shadow ground plane
   const shadowPlaneGeo = new THREE.PlaneGeometry(10, 10);
@@ -466,7 +585,9 @@ export function createKit3DEngine(
     }
 
     if (autoRotate) {
-      jerseyGroup.rotation.y += dt * 0.65;
+      const rotDelta = dt * 0.65;
+      jerseyGroup.rotation.y += rotDelta;
+      if (fullKitRoot) fullKitRoot.rotation.y += rotDelta;
     }
 
     if (targetCamPos) {
@@ -485,39 +606,78 @@ export function createKit3DEngine(
   return {
     updateCanvasTexture(newCanvas: HTMLCanvasElement) {
       if (!newCanvas) return;
-      if (kitTexture.image !== newCanvas) {
-        kitTexture.image = newCanvas;
+      if (jerseyTexture.image !== newCanvas) {
+        jerseyTexture.image = newCanvas;
       }
-      kitTexture.needsUpdate = true;
+      jerseyTexture.needsUpdate = true;
+    },
+    updateJerseyTexture(canvas: HTMLCanvasElement) {
+      if (!canvas) return;
+      if (jerseyTexture.image !== canvas) {
+        jerseyTexture.image = canvas;
+      }
+      jerseyTexture.needsUpdate = true;
+    },
+    updateShortsTexture(canvas: HTMLCanvasElement) {
+      if (!canvas) return;
+      if (shortsTexture.image !== canvas) {
+        shortsTexture.image = canvas;
+      }
+      shortsTexture.needsUpdate = true;
+    },
+    updateSocksTexture(canvas: HTMLCanvasElement) {
+      if (!canvas) return;
+      if (socksTexture.image !== canvas) {
+        socksTexture.image = canvas;
+      }
+      socksTexture.needsUpdate = true;
+    },
+    setMannequinVisible(visible: boolean) {
+      currentMannequinVisible = visible;
+      applyGarmentVisibility();
+    },
+    setGarmentMode(mode: 'JERSEY' | 'SHORTS' | 'SOCKS' | 'ALL') {
+      currentGarmentMode = mode;
+      applyGarmentVisibility();
+      if (!fullKitRoot) {
+        jerseyGroup.visible = mode === 'JERSEY' || mode === 'ALL';
+      }
     },
     setLightingPreset(preset: LightingPreset) {
       applyLightingPreset(preset);
     },
     setFinishType(finish: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN') {
-      if (finish === 'MATTE_MESH') {
-        kitMaterial.roughness = 0.78;
-        kitMaterial.clearcoat = 0.0;
-        kitMaterial.sheen = 0.35;
-      } else if (finish === 'RETRO_SATIN') {
-        kitMaterial.roughness = 0.34;
-        kitMaterial.clearcoat = 0.22;
-        kitMaterial.sheen = 0.9;
-      } else {
-        kitMaterial.roughness = 0.56;
-        kitMaterial.clearcoat = 0.08;
-        kitMaterial.sheen = 0.65;
-      }
-      kitMaterial.needsUpdate = true;
+      const updateMat = (mat: THREE.MeshPhysicalMaterial) => {
+        if (finish === 'MATTE_MESH') {
+          mat.roughness = 0.85;
+          mat.clearcoat = 0.0;
+          mat.sheen = 0.25;
+        } else if (finish === 'RETRO_SATIN') {
+          mat.roughness = 0.38;
+          mat.clearcoat = 0.18;
+          mat.sheen = 0.85;
+        } else {
+          mat.roughness = 0.80;
+          mat.clearcoat = 0.04;
+          mat.sheen = 0.45;
+        }
+        mat.needsUpdate = true;
+      };
+      updateMat(jerseyMaterial);
+      updateMat(shortsMaterial);
+      updateMat(socksMaterial);
     },
     setAutoRotate(enabled: boolean) {
       autoRotate = enabled;
     },
     resetCamera() {
       jerseyGroup.rotation.set(0, 0, 0);
+      if (fullKitRoot) fullKitRoot.rotation.set(0, 0, 0);
       targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
     },
     setCameraAngle(view: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT') {
       jerseyGroup.rotation.set(0, 0, 0);
+      if (fullKitRoot) fullKitRoot.rotation.set(0, 0, 0);
       switch (view) {
         case 'FRONT':
           targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
@@ -557,9 +717,14 @@ export function createKit3DEngine(
       controls.dispose();
       ktx2Loader?.dispose();
       dracoLoader?.dispose();
-      kitTexture.dispose();
+      jerseyTexture.dispose();
+      shortsTexture.dispose();
+      socksTexture.dispose();
       normalTexture.dispose();
-      kitMaterial.dispose();
+      jerseyMaterial.dispose();
+      shortsMaterial.dispose();
+      socksMaterial.dispose();
+      mannequinMaterial.dispose();
       standMaterial.dispose();
       renderer.dispose();
     },

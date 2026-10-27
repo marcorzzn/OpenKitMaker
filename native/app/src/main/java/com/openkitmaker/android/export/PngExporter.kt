@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EXPORT / FUN-EXPORT-PNG
+// Implements: SCR-EXPORT / FUN-EXPORT-PNG
 package com.openkitmaker.android.export
 
 import android.content.ContentValues
@@ -33,15 +33,20 @@ class PngExporter @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val kitId = inputData.getString(KEY_KIT_ID) ?: return@withContext Result.failure()
         val kit = kitRepository.getKitById(kitId) ?: return@withContext Result.failure()
+        val garmentTypeName = inputData.getString(KEY_GARMENT_TYPE) ?: com.openkitmaker.android.domain.GarmentType.JERSEY.name
+        val garmentType = runCatching { com.openkitmaker.android.domain.GarmentType.valueOf(garmentTypeName) }
+            .getOrDefault(com.openkitmaker.android.domain.GarmentType.JERSEY)
 
         try {
-            val bitmap = TextureEngine.compositeKitBitmap(
+            val bitmap = TextureEngine.compositeGarmentBitmap(
                 kit = kit,
+                garmentType = garmentType,
                 width = TextureEngine.FULL_RESOLUTION,
                 height = TextureEngine.FULL_RESOLUTION
             )
 
-            val fileName = "kit_${kit.id}_texture.png"
+            val prefix = garmentType.name.lowercase()
+            val fileName = "${prefix}_${kit.id}_2048.png"
             val savedUri = writePngToMediaStore(appContext, fileName, bitmap)
             bitmap.recycle()
 
@@ -64,6 +69,7 @@ class PngExporter @AssistedInject constructor(
 
     companion object {
         const val KEY_KIT_ID = "kit_id"
+        const val KEY_GARMENT_TYPE = "garment_type"
         const val KEY_OUTPUT_URI = "output_uri"
         const val KEY_FILE_NAME = "file_name"
         const val KEY_ERROR_MESSAGE = "error_message"

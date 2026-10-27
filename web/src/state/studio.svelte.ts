@@ -8,11 +8,14 @@ import type {
   Template,
   EditorViewMode,
   LightingPreset,
+  GarmentType,
+  Garment,
 } from '../types/kit';
 import {
   BUILTIN_TEMPLATES,
   cloneTemplateToKit,
   generateUuidV4,
+  ensureKitGarments,
 } from '../data/templates';
 import {
   saveKitToDb,
@@ -39,6 +42,8 @@ class OpenKitMakerStudioStore {
 
   // Active Kit in Editor
   activeKit = $state<Kit>(cloneTemplateToKit(BUILTIN_TEMPLATES[0]));
+  activeGarmentType = $state<GarmentType | 'ALL'>('JERSEY');
+  showMannequin = $state<boolean>(true);
   selectedLayerId = $state<string>('');
   activeLayerTypeFilter = $state<LayerType | 'ALL'>('ALL');
 
@@ -75,16 +80,27 @@ class OpenKitMakerStudioStore {
   toasts = $state<ToastNotification[]>([]);
 
   // Derived values using Svelte 5 $derived rune
+  activeGarment = $derived<Garment | null>(
+    this.activeGarmentType === 'ALL'
+      ? null
+      : (this.activeKit.garments?.[this.activeGarmentType.toLowerCase() as 'jersey' | 'shorts' | 'socks'] ?? null)
+  );
+
+  activeLayers = $derived<Layer[]>(
+    this.activeGarment ? this.activeGarment.layers : this.activeKit.layers
+  );
+
   selectedLayer = $derived<Layer | undefined>(
-    this.activeKit.layers.find((l) => l.id === this.selectedLayerId) ||
-      this.activeKit.layers[0]
+    this.activeLayers.find((l) => l.id === this.selectedLayerId) ||
+      this.activeLayers[0]
   );
 
   recentThreeDrafts = $derived<Kit[]>(this.savedKits.slice(0, 3));
 
   constructor() {
-    if (this.activeKit.layers.length > 0) {
-      this.selectedLayerId = this.activeKit.layers[0].id;
+    ensureKitGarments(this.activeKit);
+    if (this.activeLayers.length > 0) {
+      this.selectedLayerId = this.activeLayers[0].id;
     }
   }
 
@@ -128,14 +144,19 @@ class OpenKitMakerStudioStore {
       if (kits.length === 0) {
         // Seed initial sample kit so SCR-HOME shows an immediate draft out-of-the-box
         const starterKit = cloneTemplateToKit(BUILTIN_TEMPLATES[0]);
+        ensureKitGarments(starterKit);
         starterKit.metadata.thumbnailDataUrl = this.generateMinikitDataUrl(starterKit);
         await saveKitToDb(starterKit);
         this.savedKits = [starterKit];
         this.activeKit = starterKit;
         this.selectedLayerId = starterKit.layers[0]?.id || '';
       } else {
-        this.savedKits = kits;
+        this.savedKits = kits.map((k) => {
+          ensureKitGarments(k);
+          return k;
+        });
         this.activeKit = JSON.parse(JSON.stringify(kits[0]));
+        ensureKitGarments(this.activeKit);
         this.selectedLayerId = this.activeKit.layers[0]?.id || '';
       }
     } catch {
@@ -162,12 +183,29 @@ class OpenKitMakerStudioStore {
     this.currentScreen = screen;
   }
 
+  setGarmentType(type: GarmentType | 'ALL'): void {
+    this.activeGarmentType = type;
+    if (type !== 'ALL') {
+      const g = this.activeKit.garments?.[type.toLowerCase() as 'jersey' | 'shorts' | 'socks'];
+      if (g && g.layers.length > 0) {
+        this.selectedLayerId = g.layers[0].id;
+      }
+    }
+    this.textureRevision++;
+  }
+
+  toggleMannequin(): void {
+    this.showMannequin = !this.showMannequin;
+  }
+
   /**
    * FUN-SELECT-TEMPLATE: Initializes a new Kit by cloning a template with fresh UUIDv4.
    */
   selectTemplate(template: Template): void {
     const newKit = cloneTemplateToKit(template);
+    ensureKitGarments(newKit);
     this.activeKit = newKit;
+    this.activeGarmentType = 'JERSEY';
     this.selectedLayerId = newKit.layers[0]?.id || '';
     this.activeLayerTypeFilter = 'ALL';
     this.textureRevision++;
@@ -177,16 +215,36 @@ class OpenKitMakerStudioStore {
 
   openSavedKit(kit: Kit, targetScreen: ScreenId = 'SCR-EDITOR'): void {
     const cloned: Kit = JSON.parse(JSON.stringify(kit));
+    ensureKitGarments(cloned);
     this.activeKit = cloned;
+    this.activeGarmentType = 'JERSEY';
     this.selectedLayerId = cloned.layers[0]?.id || '';
     this.lightingPreset = cloned.metadata?.lightingPreset || 'studio';
     this.textureRevision++;
     this.currentScreen = targetScreen;
   }
 
+  private getTargetLayers(): Layer[] {
+    return this.activeGarment ? this.activeGarment.layers : this.activeKit.layers;
+  }
+
+  private commitLayers(layers: Layer[]): void {
+    if (this.activeGarment) {
+      this.activeGarment.layers = layers;
+      if (this.activeGarmentType === 'JERSEY') {
+        this.activeKit.layers = layers;
+      }
+    } else {
+      this.activeKit.layers = layers;
+    }
+    this.activeKit.updatedAt = new Date().toISOString();
+    this.textureRevision++;
+  }
+
   selectLayerByType(type: LayerType): void {
     this.activeLayerTypeFilter = type;
-    const match = this.activeKit.layers.find((l) => l.type === type);
+    const layers = this.getTargetLayers();
+    const match = layers.find((l) => l.type === type);
     if (match) {
       this.selectedLayerId = match.id;
     }
@@ -201,7 +259,8 @@ class OpenKitMakerStudioStore {
     isSecondary = false,
     commitRecent = false
   ): void {
-    const layer = this.activeKit.layers.find((l) => l.id === layerId);
+    const layers = this.getTargetLayers();
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
 
     const normalized = hexColor.startsWith('#') ? hexColor.toUpperCase() : `#${hexColor.toUpperCase()}`;
@@ -210,8 +269,7 @@ class OpenKitMakerStudioStore {
     } else {
       layer.color = normalized;
     }
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(layers);
 
     if (commitRecent && /^#[0-9A-F]{6}([0-9A-F]{2})?$/i.test(normalized)) {
       const filtered = this.recentColors.filter(
@@ -226,42 +284,43 @@ class OpenKitMakerStudioStore {
    * FUN-MANAGE-LAYERS: Layer visibility, opacity, blend mode, z-index, and CRUD.
    */
   toggleLayerVisibility(layerId: string): void {
-    const layer = this.activeKit.layers.find((l) => l.id === layerId);
+    const layers = this.getTargetLayers();
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
     layer.visible = !layer.visible;
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(layers);
   }
 
   setLayerOpacity(layerId: string, opacity: number): void {
-    const layer = this.activeKit.layers.find((l) => l.id === layerId);
+    const layers = this.getTargetLayers();
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
     layer.opacity = Math.max(0, Math.min(1, Number(opacity)));
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(layers);
   }
 
   setLayerBlendMode(layerId: string, blendMode: BlendMode): void {
-    const layer = this.activeKit.layers.find((l) => l.id === layerId);
+    const layers = this.getTargetLayers();
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
     layer.blendMode = blendMode;
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(layers);
   }
 
   updateLayerProperty(layerId: string, key: string, value: unknown): void {
-    const layer = this.activeKit.layers.find((l) => l.id === layerId);
+    const layers = this.getTargetLayers();
+    const layer = layers.find((l) => l.id === layerId);
     if (!layer) return;
     layer.properties = {
       ...layer.properties,
       [key]: value,
     };
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(layers);
   }
 
   moveLayerZIndex(layerId: string, direction: 'UP' | 'DOWN'): void {
-    const sorted = [...this.activeKit.layers].sort((a, b) => a.zIndex - b.zIndex);
+    const layers = this.getTargetLayers();
+    const sorted = [...layers].sort((a, b) => a.zIndex - b.zIndex);
     const idx = sorted.findIndex((l) => l.id === layerId);
     if (idx === -1) return;
     const swapIdx = direction === 'UP' ? idx + 1 : idx - 1;
@@ -274,13 +333,12 @@ class OpenKitMakerStudioStore {
     sorted.forEach((l, i) => {
       l.zIndex = i;
     });
-    this.activeKit.layers = sorted;
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(sorted);
   }
 
   addNewLayer(type: LayerType): void {
-    const maxZ = this.activeKit.layers.reduce((max, l) => Math.max(max, l.zIndex), 0);
+    const layers = this.getTargetLayers();
+    const maxZ = layers.reduce((max, l) => Math.max(max, l.zIndex), 0);
     const defaultPropsByType: Record<LayerType, Record<string, unknown>> = {
       BASE: {},
       PATTERN: { patternStyle: 'VERTICAL_STRIPES', stripeCount: 5, stripeWidth: 0.45, angle: 0 },
@@ -294,7 +352,7 @@ class OpenKitMakerStudioStore {
 
     const newLayer: Layer = {
       id: generateUuidV4(),
-      name: `Livello ${type} #${this.activeKit.layers.length + 1}`,
+      name: `Livello ${type} #${layers.length + 1}`,
       type,
       visible: true,
       opacity: 1.0,
@@ -302,30 +360,29 @@ class OpenKitMakerStudioStore {
       color: '#00C49F',
       secondaryColor: '#FFFFFF',
       blendMode: 'NORMAL',
-      properties: defaultPropsByType[type],
+      properties: defaultPropsByType[type] || {},
     };
 
-    this.activeKit.layers = [...this.activeKit.layers, newLayer];
+    const updated = [...layers, newLayer];
     this.selectedLayerId = newLayer.id;
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(updated);
     this.notify('success', `Nuovo livello "${newLayer.name}" aggiunto.`);
   }
 
   deleteLayer(layerId: string): void {
-    if (this.activeKit.layers.length <= 1) {
-      this.notify('error', 'Il kit deve contenere almeno un livello attivo.');
+    const layers = this.getTargetLayers();
+    if (layers.length <= 1) {
+      this.notify('error', 'Il capo deve contenere almeno un livello attivo.');
       return;
     }
-    this.activeKit.layers = this.activeKit.layers
+    const updated = layers
       .filter((l) => l.id !== layerId)
       .map((l, idx) => ({ ...l, zIndex: idx }));
 
     if (this.selectedLayerId === layerId) {
-      this.selectedLayerId = this.activeKit.layers[0]?.id || '';
+      this.selectedLayerId = updated[0]?.id || '';
     }
-    this.activeKit.updatedAt = new Date().toISOString();
-    this.textureRevision++;
+    this.commitLayers(updated);
   }
 
   /**

@@ -17,7 +17,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import com.openkitmaker.android.domain.BlendMode
 import com.openkitmaker.android.domain.CollarStyle
-import com.openkitmaker.android.domain.DecalShape
+import com.openkitmaker.android.domain.GarmentType
 import com.openkitmaker.android.domain.Kit
 import com.openkitmaker.android.domain.Layer
 import com.openkitmaker.android.domain.LayerType
@@ -40,11 +40,20 @@ object TextureEngine {
         width: Int = FULL_RESOLUTION,
         height: Int = FULL_RESOLUTION
     ): Bitmap {
+        return compositeJerseyBitmap(kit, width, height)
+    }
+
+    fun compositeJerseyBitmap(
+        kit: Kit,
+        width: Int = FULL_RESOLUTION,
+        height: Int = FULL_RESOLUTION
+    ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
 
-        val orderedLayers = kit.layers
+        val layers = kit.garments.jersey.layers.ifEmpty { kit.layers }
+        val orderedLayers = layers
             .filter { it.visible && it.opacity > 0.01f }
             .sortedBy { it.zIndex }
 
@@ -54,6 +63,61 @@ object TextureEngine {
 
         drawUvSeamGuides(canvas, width.toFloat(), height.toFloat())
         return bitmap
+    }
+
+    fun compositeShortsBitmap(
+        kit: Kit,
+        width: Int = FULL_RESOLUTION,
+        height: Int = FULL_RESOLUTION
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+
+        val layers = kit.garments.shorts.layers
+        val orderedLayers = layers
+            .filter { it.visible && it.opacity > 0.01f }
+            .sortedBy { it.zIndex }
+
+        for (layer in orderedLayers) {
+            renderLayer(canvas, layer, width.toFloat(), height.toFloat())
+        }
+
+        drawShortsUvSeamGuides(canvas, width.toFloat(), height.toFloat())
+        return bitmap
+    }
+
+    fun compositeSocksBitmap(
+        kit: Kit,
+        width: Int = FULL_RESOLUTION,
+        height: Int = FULL_RESOLUTION
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+
+        val layers = kit.garments.socks.layers
+        val orderedLayers = layers
+            .filter { it.visible && it.opacity > 0.01f }
+            .sortedBy { it.zIndex }
+
+        for (layer in orderedLayers) {
+            renderLayer(canvas, layer, width.toFloat(), height.toFloat())
+        }
+
+        drawSocksUvSeamGuides(canvas, width.toFloat(), height.toFloat())
+        return bitmap
+    }
+
+    fun compositeGarmentBitmap(
+        kit: Kit,
+        garmentType: GarmentType,
+        width: Int = FULL_RESOLUTION,
+        height: Int = FULL_RESOLUTION
+    ): Bitmap = when (garmentType) {
+        GarmentType.JERSEY -> compositeJerseyBitmap(kit, width, height)
+        GarmentType.SHORTS -> compositeShortsBitmap(kit, width, height)
+        GarmentType.SOCKS -> compositeSocksBitmap(kit, width, height)
     }
 
     /**
@@ -227,6 +291,249 @@ object TextureEngine {
         canvas.drawText("${kit.category} · Mockup 2D", width - 18f * s, height - 16f * s, metaPaint)
 
         return bitmap
+    }
+
+    /**
+     * Rende il Mockup 2D fotorealistico dei pantaloncini (sagoma fronte/retro).
+     */
+    fun renderShortsMockupBitmap(
+        kit: Kit,
+        fullTexture: Bitmap,
+        width: Int = 1024,
+        height: Int = 1024
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Backdrop
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                width / 2f, height * 0.45f, width * 0.65f,
+                Color.parseColor("#1E293B"),
+                Color.parseColor("#0F141C"),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+
+        val s = width / 512f
+
+        // Sagoma Pantaloncini
+        val path = Path().apply {
+            moveTo(-100f * s, -90f * s)
+            lineTo(100f * s, -90f * s)
+            lineTo(110f * s, 85f * s)
+            lineTo(20f * s, 85f * s)
+            lineTo(0f * s, -15f * s)
+            lineTo(-20f * s, 85f * s)
+            lineTo(-110f * s, 85f * s)
+            close()
+        }
+
+        // Drop shadow
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            alpha = (0.50f * 255f).toInt()
+            maskFilter = runCatching { BlurMaskFilter(20f * s, BlurMaskFilter.Blur.NORMAL) }.getOrNull()
+        }
+
+        canvas.save()
+        canvas.translate(width / 2f, height * 0.45f)
+        canvas.drawPath(path, shadowPaint)
+
+        // Texture clipping
+        canvas.save()
+        canvas.clipPath(path)
+        val dstRect = RectF(-115f * s, -95f * s, 115f * s, 95f * s)
+        canvas.drawBitmap(fullTexture, Rect(0, 0, fullTexture.width, fullTexture.height), dstRect, Paint(Paint.FILTER_BITMAP_FLAG))
+
+        // Shading
+        val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                -110f * s, 0f, 110f * s, 0f,
+                intArrayOf(
+                    Color.argb((0.25f * 255f).toInt(), 0, 0, 0),
+                    Color.TRANSPARENT,
+                    Color.argb((0.28f * 255f).toInt(), 0, 0, 0)
+                ),
+                floatArrayOf(0f, 0.5f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(dstRect, shadePaint)
+        canvas.restore()
+
+        // Outline
+        val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            alpha = (0.28f * 255f).toInt()
+            strokeWidth = 2f * s
+            style = Paint.Style.STROKE
+        }
+        canvas.drawPath(path, outlinePaint)
+        canvas.restore()
+
+        // Footer
+        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#0F141C")
+            alpha = (0.90f * 255f).toInt()
+        }
+        canvas.drawRect(0f, height - 44f * s, width.toFloat(), height.toFloat(), footerPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 17f * s
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        canvas.drawText("${kit.name.uppercase().take(24)} · SHORTS", 18f * s, height - 16f * s, textPaint)
+
+        return bitmap
+    }
+
+    /**
+     * Rende il Mockup 2D fotorealistico dei calzettoni.
+     */
+    fun renderSocksMockupBitmap(
+        kit: Kit,
+        fullTexture: Bitmap,
+        width: Int = 1024,
+        height: Int = 1024
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Backdrop
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                width / 2f, height * 0.45f, width * 0.65f,
+                Color.parseColor("#1E293B"),
+                Color.parseColor("#0F141C"),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+
+        val s = width / 512f
+
+        fun drawSock(cx: Float, cy: Float, flip: Boolean) {
+            canvas.save()
+            canvas.translate(cx, cy)
+            if (flip) canvas.scale(-1f, 1f)
+
+            val path = Path().apply {
+                moveTo(-28f * s, -140f * s)
+                lineTo(28f * s, -140f * s)
+                lineTo(28f * s, 60f * s)
+                lineTo(80f * s, 110f * s)
+                lineTo(55f * s, 135f * s)
+                lineTo(-15f * s, 85f * s)
+                lineTo(-28f * s, 60f * s)
+                close()
+            }
+
+            val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                alpha = (0.45f * 255f).toInt()
+                maskFilter = runCatching { BlurMaskFilter(16f * s, BlurMaskFilter.Blur.NORMAL) }.getOrNull()
+            }
+            canvas.drawPath(path, shadowPaint)
+
+            canvas.save()
+            canvas.clipPath(path)
+            val dstRect = RectF(-35f * s, -145f * s, 85f * s, 140f * s)
+            canvas.drawBitmap(fullTexture, Rect(0, 0, fullTexture.width, fullTexture.height), dstRect, Paint(Paint.FILTER_BITMAP_FLAG))
+
+            val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(
+                    -30f * s, 0f, 30f * s, 0f,
+                    intArrayOf(
+                        Color.argb((0.28f * 255f).toInt(), 0, 0, 0),
+                        Color.TRANSPARENT,
+                        Color.argb((0.25f * 255f).toInt(), 0, 0, 0)
+                    ),
+                    floatArrayOf(0f, 0.5f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            canvas.drawRect(dstRect, shadePaint)
+            canvas.restore()
+
+            val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = (0.28f * 255f).toInt()
+                strokeWidth = 2f * s
+                style = Paint.Style.STROKE
+            }
+            canvas.drawPath(path, outlinePaint)
+            canvas.restore()
+        }
+
+        drawSock(width * 0.38f, height * 0.45f, flip = false)
+        drawSock(width * 0.62f, height * 0.45f, flip = true)
+
+        // Footer
+        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#0F141C")
+            alpha = (0.90f * 255f).toInt()
+        }
+        canvas.drawRect(0f, height - 44f * s, width.toFloat(), height.toFloat(), footerPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 17f * s
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        canvas.drawText("${kit.name.uppercase().take(24)} · SOCKS", 18f * s, height - 16f * s, textPaint)
+
+        return bitmap
+    }
+
+    /**
+     * Rende la composizione fotorealistica del Full Kit (Maglia + Pantaloncini + Calzettoni).
+     */
+    fun renderFullKitMockupBitmap(
+        kit: Kit,
+        width: Int = 1024,
+        height: Int = 1024
+    ): Bitmap {
+        val jerseyTex = compositeJerseyBitmap(kit, 1024, 1024)
+        val shortsTex = compositeShortsBitmap(kit, 1024, 1024)
+        val socksTex = compositeSocksBitmap(kit, 1024, 1024)
+
+        val jerseyMockup = renderJerseyMockupBitmap(kit, jerseyTex, width, height)
+        val shortsMockup = renderShortsMockupBitmap(kit, shortsTex, width / 2, height / 2)
+        val socksMockup = renderSocksMockupBitmap(kit, socksTex, width / 2, height / 2)
+
+        jerseyTex.recycle()
+        shortsTex.recycle()
+        socksTex.recycle()
+
+        val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(fullBmp)
+        val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+
+        // Draw jersey
+        canvas.drawBitmap(jerseyMockup, 0f, 0f, filterPaint)
+        jerseyMockup.recycle()
+
+        // Draw shorts inset on bottom-left
+        val insetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#0F141C")
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        }
+        val shortsDst = RectF(width * 0.03f, height * 0.58f, width * 0.38f, height * 0.93f)
+        canvas.drawBitmap(shortsMockup, null, shortsDst, filterPaint)
+        canvas.drawRect(shortsDst, insetPaint)
+        shortsMockup.recycle()
+
+        // Draw socks inset on bottom-right
+        val socksDst = RectF(width * 0.62f, height * 0.58f, width * 0.97f, height * 0.93f)
+        canvas.drawBitmap(socksMockup, null, socksDst, filterPaint)
+        canvas.drawRect(socksDst, insetPaint)
+        socksMockup.recycle()
+
+        return fullBmp
     }
 
     private fun renderLayer(canvas: Canvas, layer: Layer, w: Float, h: Float) {
@@ -763,6 +1070,31 @@ object TextureEngine {
         canvas.drawLine(sleeveRightX, h - cuffH, sleeveRightX + sleeveRightW, h - cuffH, seamPaint)
     }
 
+    private fun drawShortsUvSeamGuides(canvas: Canvas, w: Float, h: Float) {
+        val seamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            color = Color.argb(40, 255, 255, 255)
+        }
+        // Vertical dividing seam
+        canvas.drawLine(w * 0.5f, 0f, w * 0.5f, h, seamPaint)
+        // Horizontal dividing seam (front / back)
+        canvas.drawLine(0f, h * 0.5f, w, h * 0.5f, seamPaint)
+    }
+
+    private fun drawSocksUvSeamGuides(canvas: Canvas, w: Float, h: Float) {
+        val seamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            color = Color.argb(40, 255, 255, 255)
+        }
+        // Vertical divider between left and right sock
+        canvas.drawLine(w * 0.5f, 0f, w * 0.5f, h, seamPaint)
+        // Top cuff turnover line
+        canvas.drawLine(0f, h * 0.22f, w, h * 0.22f, seamPaint)
+        // Ankle turnover line
+        canvas.drawLine(0f, h * 0.65f, w, h * 0.65f, seamPaint)
+    }
 
     fun parseHexColor(hex: String, fallback: Int): Int =
         runCatching { Color.parseColor(hex) }.getOrDefault(fallback)

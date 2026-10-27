@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP
+// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP
 package com.openkitmaker.android.ui.export
 
 import android.content.Context
@@ -55,24 +55,33 @@ class ExportViewModel @Inject constructor(
             _kit.value = loaded
             if (loaded != null) {
                 val bmp = withContext(Dispatchers.Default) {
-                    TextureEngine.compositeKitBitmap(loaded, 512, 512)
+                    TextureEngine.renderFullKitMockupBitmap(loaded, 512, 512)
                 }
                 _previewBitmap.value = bmp
             }
         }
     }
 
-    fun exportPngLossless() {
+    fun exportGarmentPngLossless(garmentType: com.openkitmaker.android.domain.GarmentType) {
         val current = _kit.value ?: return
         _isExporting.value = true
-        _exportStatus.value = "Avvio WorkManager per ${StringsIt.EXPORT_OPTION_PNG_TITLE}..."
+        _exportStatus.value = "Avvio WorkManager per texture ${garmentType.name} (2048×2048)..."
 
         val request = OneTimeWorkRequestBuilder<PngExporter>()
-            .setInputData(workDataOf(PngExporter.KEY_KIT_ID to current.id))
+            .setInputData(
+                workDataOf(
+                    PngExporter.KEY_KIT_ID to current.id,
+                    PngExporter.KEY_GARMENT_TYPE to garmentType.name
+                )
+            )
             .build()
 
         workManager.enqueue(request)
         observeWork(request.id)
+    }
+
+    fun exportPngLossless() {
+        exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.JERSEY)
     }
 
     fun exportInteroperableZip() {

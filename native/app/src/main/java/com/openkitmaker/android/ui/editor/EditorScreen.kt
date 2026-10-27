@@ -79,6 +79,8 @@ fun EditorScreen(
     viewModel: EditorViewModel = hiltViewModel()
 ) {
     val kit by viewModel.kit.collectAsState()
+    val activeGarmentType by viewModel.activeGarmentType.collectAsState()
+    val showMannequin by viewModel.showMannequin.collectAsState()
     val selectedLayerId by viewModel.selectedLayerId.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
     val albedoBitmap by viewModel.albedoBitmap.collectAsState()
@@ -91,8 +93,9 @@ fun EditorScreen(
     var showRawUvSheet by remember { mutableStateOf(false) }
 
     val currentKit = kit ?: return
-    val activeLayer = currentKit.layers.firstOrNull { it.id == selectedLayerId }
-        ?: currentKit.layers.firstOrNull()
+    val activeLayers = viewModel.getActiveLayers(currentKit, activeGarmentType)
+    val activeLayer = activeLayers.firstOrNull { it.id == selectedLayerId }
+        ?: activeLayers.firstOrNull()
 
     val activeColorInt = runCatching {
         Color(android.graphics.Color.parseColor(activeLayer?.color ?: "#0F52BA"))
@@ -218,7 +221,7 @@ fun EditorScreen(
                             color = if (activeTab == BottomEditorTab.LAYERS) Color(0xFF00C49F) else Color(0xFF94A3B8)
                         )
                     },
-                    label = { Text("Livelli (${currentKit.layers.size})") },
+                    label = { Text("Livelli (${activeLayers.size})") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedTextColor = Color(0xFF00C49F),
                         unselectedTextColor = Color(0xFF94A3B8),
@@ -295,6 +298,60 @@ fun EditorScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Garment Selector Bar & 3D Mannequin Toggle (FASE 3 / FUN-EDIT-SHORTS / FUN-EDIT-SOCKS / FUN-MANNEQUIN-TOGGLE)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF101622))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    GarmentSelection.entries.forEach { selection ->
+                        val isSelected = activeGarmentType == selection
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.selectGarment(selection) },
+                            label = {
+                                Text(
+                                    text = "${selection.emoji} ${selection.labelIt}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = if (selection == GarmentSelection.ALL) Color(0xFF00C49F) else Color(0xFF0F52BA),
+                                selectedLabelColor = if (selection == GarmentSelection.ALL) Color(0xFF0F141C) else Color.White,
+                                containerColor = Color(0xFF1A2230),
+                                labelColor = Color(0xFF94A3B8)
+                            )
+                        )
+                    }
+                }
+
+                // Mannequin Toggle
+                FilterChip(
+                    selected = showMannequin,
+                    onClick = viewModel::toggleMannequin,
+                    label = {
+                        Text(
+                            text = if (showMannequin) "👤 Manichino" else "👤 Solo Capo",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF253146),
+                        selectedLabelColor = Color(0xFF00C49F),
+                        containerColor = Color(0xFF141B26),
+                        labelColor = Color(0xFF64748B)
+                    )
+                )
+            }
+
             // Viewport Mode Selector Bar (2D / 3D / Split) + Mockup/UV Switcher
             Row(
                 modifier = Modifier
@@ -381,6 +438,7 @@ fun EditorScreen(
                                 yawDegrees = yaw,
                                 pitchDegrees = pitch,
                                 zoomLevel = zoom,
+                                showMannequin = showMannequin,
                                 onOrbitChange = viewModel::updateOrbit
                             )
                         }
@@ -388,63 +446,150 @@ fun EditorScreen(
                 }
             }
 
-            // Area Inferiore: Pannello Strumenti dinamico basato sul tab attivo
+            // Area Inferiore: Pannello Strumenti dinamico o Vista Completo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.45f)
+                    .weight(if (activeGarmentType == GarmentSelection.ALL) 0.35f else 0.45f)
                     .background(Color(0xFF1A2230))
             ) {
-                when (activeTab) {
-                    BottomEditorTab.LAYERS -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                if (activeGarmentType == GarmentSelection.ALL) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "👤 Vista Completo (Full Kit)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Maglia (${currentKit.garments.jersey.layers.size} liv.) · Pantaloncini (${currentKit.garments.shorts.layers.size} liv.) · Calzettoni (${currentKit.garments.socks.layers.size} liv.)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF94A3B8)
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(
+                                onClick = { viewModel.selectGarment(GarmentSelection.JERSEY) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                             ) {
-                                Text(
-                                    text = "Stack Livelli Maglia",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Trascina o ordina per z-index",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF94A3B8)
-                                )
+                                Text("← Modifica Capi")
                             }
-
-                            LayerList(
-                                layers = currentKit.layers,
-                                selectedLayerId = selectedLayerId,
-                                onSelectLayer = { id ->
-                                    viewModel.selectLayer(id)
+                            Button(
+                                onClick = {
+                                    viewModel.saveDraft()
+                                    onNavigateToExport(currentKit.id)
                                 },
-                                onToggleVisibility = viewModel::toggleLayerVisibility,
-                                onMoveLayer = viewModel::moveLayerZIndex,
-                                onOpacityChange = viewModel::updateLayerOpacity,
-                                onBlendModeChange = viewModel::updateLayerBlendMode
-                            )
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C49F))
+                            ) {
+                                Text("Esporta Completo (ZIP) →", color = Color(0xFF0F141C), fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+                } else {
+                    when (activeTab) {
+                        BottomEditorTab.LAYERS -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Stack Livelli ${activeGarmentType.labelIt}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Trascina o ordina per z-index",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
 
-                    BottomEditorTab.COLOR -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            if (activeLayer != null) {
+                                LayerList(
+                                    layers = activeLayers,
+                                    selectedLayerId = selectedLayerId,
+                                    onSelectLayer = { id ->
+                                        viewModel.selectLayer(id)
+                                    },
+                                    onToggleVisibility = viewModel::toggleLayerVisibility,
+                                    onMoveLayer = viewModel::moveLayerZIndex,
+                                    onOpacityChange = viewModel::updateLayerOpacity,
+                                    onBlendModeChange = viewModel::updateLayerBlendMode
+                                )
+                            }
+                        }
+
+                        BottomEditorTab.COLOR -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                if (activeLayer != null) {
+                                    ElevatedCard(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFF253146)),
+                                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Text(
+                                                text = "Colore Primario: ${activeLayer.name}",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+
+                                            ColorPicker(
+                                                label = "Palette HSV Livello (${activeLayer.type.labelIt})",
+                                                currentHex = activeLayer.color,
+                                                recentColors = currentKit.metadata.recentColors,
+                                                onColorChanged = viewModel::updateLayerColor
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Text(
+                                        text = "Seleziona un livello dalla scheda Livelli per modificarne il colore.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                        }
+
+                        BottomEditorTab.VIEW -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
                                 ElevatedCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
@@ -458,90 +603,46 @@ fun EditorScreen(
                                         verticalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         Text(
-                                            text = "Colore Primario: ${activeLayer.name}",
+                                            text = "Impostazioni Studio 3D & Luce",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
 
-                                        ColorPicker(
-                                            label = "Palette HSV Livello (${activeLayer.type.labelIt})",
-                                            currentHex = activeLayer.color,
-                                            recentColors = currentKit.metadata.recentColors,
-                                            onColorChanged = viewModel::updateLayerColor
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Button(
+                                                onClick = viewModel::toggleLightingMode,
+                                                modifier = Modifier.weight(1f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text("Luce: ${currentKit.metadata.lightingMode.labelIt}")
+                                            }
+                                            OutlinedButton(
+                                                onClick = { viewModel.updateOrbit(-yaw, -pitch, 1.0f) },
+                                                modifier = Modifier.weight(1f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text("Centra Camera", color = Color.White)
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Usa pinch-to-zoom per ingrandire e trascina per ruotare la visuale a 360° sulla divisa.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF94A3B8)
                                         )
                                     }
                                 }
-                            } else {
-                                Text(
-                                    text = "Seleziona un livello dalla scheda Livelli per modificarne il colore.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFF94A3B8)
-                                )
                             }
                         }
-                    }
 
-                    BottomEditorTab.VIEW -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFF253146)),
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Impostazioni Studio 3D & Luce",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Button(
-                                            onClick = viewModel::toggleLightingMode,
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ) {
-                                            Text("Luce: ${currentKit.metadata.lightingMode.labelIt}")
-                                        }
-                                        OutlinedButton(
-                                            onClick = { viewModel.updateOrbit(-yaw, -pitch, 1.0f) },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ) {
-                                            Text("Centra Camera", color = Color.White)
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Usa pinch-to-zoom per ingrandire e trascina per ruotare la visuale a 360° sulla divisa.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF94A3B8)
-                                    )
-                                }
-                            }
+                        BottomEditorTab.EXPORT -> {
+                            // Handled directly in navigation bar click
                         }
-                    }
-
-                    BottomEditorTab.EXPORT -> {
-                        // Handled directly in navigation bar click
                     }
                 }
             }

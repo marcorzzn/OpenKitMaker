@@ -52,6 +52,7 @@ fun Kit3DRenderer(
     yawDegrees: Float,
     pitchDegrees: Float,
     zoomLevel: Float,
+    showMannequin: Boolean = true,
     onOrbitChange: (deltaYaw: Float, deltaPitch: Float, zoomFactor: Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -88,6 +89,8 @@ fun Kit3DRenderer(
 
     val childNodes = rememberNodes {
         val modelInstance = runCatching {
+            modelLoader.createModelInstance(assetFileLocation = "models/kit_full_outfit_clean.glb")
+        }.getOrNull() ?: runCatching {
             modelLoader.createModelInstance(assetFileLocation = "models/kit_jersey_pbr.glb")
         }.getOrNull()
 
@@ -102,8 +105,8 @@ fun Kit3DRenderer(
         }
     }
 
-    // Aggiornamento reattivo della texture 2048x2048 su GPU Filament quando l'utente modifica un layer
-    LaunchedEffect(albedoBitmap, roughness, metalness) {
+    // Aggiornamento reattivo della texture 2048x2048 su GPU Filament e visibilità nodi
+    LaunchedEffect(albedoBitmap, roughness, metalness, showMannequin) {
         val bmp = albedoBitmap ?: return@LaunchedEffect
         val tex = MaterialFactory.createOrUpdateAlbedoTexture(engine, currentAlbedoTexture, bmp)
         currentAlbedoTexture = tex
@@ -114,8 +117,8 @@ fun Kit3DRenderer(
                     materialInstance = matInstance,
                     albedoTexture = tex,
                     normalTexture = fabricNormalTexture,
-                    roughness = roughness,
-                    metalness = metalness
+                    roughness = roughness.coerceAtLeast(0.75f),
+                    metalness = metalness.coerceAtMost(0.05f)
                 )
             }
             node.modelInstance?.entities?.forEach { entity ->
@@ -125,13 +128,19 @@ fun Kit3DRenderer(
                     val count = rm.getPrimitiveCount(ri)
                     for (p in 0 until count) {
                         val mi = rm.getMaterialInstanceAt(ri, p)
-                        MaterialFactory.applyKitPbrParameters(
-                            materialInstance = mi,
-                            albedoTexture = tex,
-                            normalTexture = fabricNormalTexture,
-                            roughness = roughness,
-                            metalness = metalness
-                        )
+                        val name = runCatching { mi.name.lowercase() }.getOrDefault("")
+                        if (name.contains("mannequin")) {
+                            // Toggle visibilità del manichino tramite layer mask
+                            rm.setLayerMask(ri, 0xFF, if (showMannequin) 0xFF else 0x00)
+                        } else {
+                            MaterialFactory.applyKitPbrParameters(
+                                materialInstance = mi,
+                                albedoTexture = tex,
+                                normalTexture = fabricNormalTexture,
+                                roughness = roughness.coerceAtLeast(0.75f),
+                                metalness = metalness.coerceAtMost(0.05f)
+                            )
+                        }
                     }
                 }
             }

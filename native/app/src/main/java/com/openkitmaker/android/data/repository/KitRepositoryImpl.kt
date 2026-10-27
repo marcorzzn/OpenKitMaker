@@ -1,4 +1,4 @@
-﻿// Implements: SCR-HOME / SCR-CATALOG / SCR-SAVED / FUN-SELECT-TEMPLATE / FUN-SAVE-LOCAL / FUN-OFFLINE-MODE
+// Implements: SCR-HOME / SCR-CATALOG / SCR-SAVED / FUN-SELECT-TEMPLATE / FUN-SAVE-LOCAL / FUN-OFFLINE-MODE
 package com.openkitmaker.android.data.repository
 
 import com.openkitmaker.android.data.local.KitDao
@@ -96,12 +96,20 @@ class KitRepositoryImpl @Inject constructor(
     override suspend fun duplicateKit(kitId: String): Kit? {
         val original = getKitById(kitId) ?: return null
         val now = Instant.now().toString()
+        val clonedGarments = original.garments.let { g ->
+            g.copy(
+                jersey = g.jersey.copy(layers = g.jersey.layers.map { it.copy(id = UUID.randomUUID().toString()) }),
+                shorts = g.shorts.copy(layers = g.shorts.layers.map { it.copy(id = UUID.randomUUID().toString()) }),
+                socks = g.socks.copy(layers = g.socks.layers.map { it.copy(id = UUID.randomUUID().toString()) })
+            )
+        }
         val copyKit = original.copy(
             id = UUID.randomUUID().toString(),
             name = "${original.name} (Copia)",
             createdAt = now,
             updatedAt = now,
-            layers = original.layers.map { it.copy(id = UUID.randomUUID().toString()) }
+            layers = original.layers.map { it.copy(id = UUID.randomUUID().toString()) },
+            garments = clonedGarments
         )
         saveKit(copyKit)
         return copyKit
@@ -121,17 +129,25 @@ class KitRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun KitEntity.toDomain(): Kit = Kit(
-        id = id,
-        name = name,
-        category = runCatching { KitCategory.valueOf(category) }.getOrDefault(KitCategory.HOME),
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-        templateId = templateId,
-        layers = json.decodeFromString(layersJson),
-        metadata = runCatching { json.decodeFromString<KitMetadata>(metadataJson) }
-            .getOrDefault(KitMetadata())
-    )
+    private fun KitEntity.toDomain(): Kit {
+        val decodedLayers = json.decodeFromString<List<Layer>>(layersJson)
+        val decodedGarments = garmentsJson?.let {
+            runCatching { json.decodeFromString<com.openkitmaker.android.domain.KitGarments>(it) }.getOrNull()
+        } ?: com.openkitmaker.android.domain.createDefaultGarments(decodedLayers)
+
+        return Kit(
+            id = id,
+            name = name,
+            category = runCatching { KitCategory.valueOf(category) }.getOrDefault(KitCategory.HOME),
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            templateId = templateId,
+            layers = decodedLayers,
+            garments = decodedGarments,
+            metadata = runCatching { json.decodeFromString<KitMetadata>(metadataJson) }
+                .getOrDefault(KitMetadata())
+        )
+    }
 
     private fun Kit.toEntity(): KitEntity = KitEntity(
         id = id,
@@ -141,6 +157,7 @@ class KitRepositoryImpl @Inject constructor(
         updatedAt = updatedAt,
         templateId = templateId,
         layersJson = json.encodeToString(layers),
+        garmentsJson = json.encodeToString(garments),
         metadataJson = json.encodeToString(metadata)
     )
 
@@ -242,9 +259,9 @@ class KitRepositoryImpl @Inject constructor(
                     playerNumber = "9"
                 )
             )
-        )
+        ) + com.openkitmaker.android.data.PresetsData.getFullKitTemplates()
 
-        private fun buildStandardLayers(
+        fun buildStandardLayers(
             baseColor: String,
             patternStyle: PatternStyle,
             patternColor: String,

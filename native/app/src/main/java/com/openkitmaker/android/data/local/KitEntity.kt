@@ -1,4 +1,4 @@
-﻿// Implements: SCR-HOME / SCR-SAVED / FUN-SAVE-LOCAL / FUN-OFFLINE-MODE
+// Implements: SCR-HOME / SCR-SAVED / FUN-SAVE-LOCAL / FUN-OFFLINE-MODE
 package com.openkitmaker.android.data.local
 
 import androidx.room.ColumnInfo
@@ -28,6 +28,9 @@ data class KitEntity(
 
     @ColumnInfo(name = "layers_json")
     val layersJson: String,
+
+    @ColumnInfo(name = "garments_json")
+    val garmentsJson: String? = null,
 
     @ColumnInfo(name = "metadata_json")
     val metadataJson: String,

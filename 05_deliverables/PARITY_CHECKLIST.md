@@ -9,7 +9,7 @@ Questa checklist costituisce lo strumento oggettivo a disposizione dei committen
 | # | Dimensione di Confronto | Metrica Oggettiva | Soglia di Accettazione | Risultato OpenKitMaker-Web (A+B) | Risultato OpenKitMaker-Native (C) | Verdetto / Note Tecniche |
 |---|---|---|---|---|---|---|
 | **1** | **Copertura Schermate** | `ID implementati / ID in screens.md` | **100%** (5 su 5: Home, Catalog, Editor, Saved, Export) | [x] **5/5 Operative** (`SCR-HOME`, `SCR-CATALOG`, `SCR-EDITOR`, `SCR-SAVED`, `SCR-EXPORT`) | [x] **5/5 Compilate** (`HomeScreen.kt`, `CatalogScreen.kt`, `EditorScreen.kt`, `SavedScreen.kt`, `ExportScreen.kt`) | ✅ **Parità Strutturale 100%** |
-| **2** | **Copertura Funzioni** | `ID implementati / ID in features.md` | **100%** (9 su 9: template, layer, color, composite, 3D, save, PNG, ZIP, offline) | [x] **9/9 Implementate** (`FUN-SELECT-TEMPLATE`, `FUN-MANAGE-LAYERS`, `FUN-EDIT-COLOR`, `FUN-COMPOSITE-2D`, `FUN-PREVIEW-3D`, `FUN-SAVE-LOCAL`, `FUN-EXPORT-PNG`, `FUN-EXPORT-ZIP`, `FUN-OFFLINE-MODE`) | [x] **9/9 Implementate** (Domain Models, `TextureEngine.kt`, `Kit3DRenderer.kt`, Room DB, `PngExporter.kt`, `ZipExporter.kt`) | ✅ **Parità Funzionale 100%** |
+| **2** | **Copertura Funzioni** | `ID implementati / ID in features.md` | **100%** (13 su 13: template, layer, color, composite, 3D, save, PNG, ZIP, offline, shorts, socks, single export, mannequin) | [x] **13/13 Implementate** (`FUN-SELECT-TEMPLATE`, `FUN-MANAGE-LAYERS`, `FUN-EDIT-COLOR`, `FUN-COMPOSITE-2D`, `FUN-PREVIEW-3D`, `FUN-SAVE-LOCAL`, `FUN-EXPORT-PNG`, `FUN-EXPORT-ZIP`, `FUN-OFFLINE-MODE`, `FUN-EDIT-SHORTS`, `FUN-EDIT-SOCKS`, `FUN-EXPORT-SINGLE`, `FUN-MANNEQUIN-TOGGLE`) | [x] **13/13 Implementate** (Domain Models, `TextureEngine.kt`, `Kit3DRenderer.kt`, Room DB, `PngExporter.kt`, `ZipExporter.kt`) | ✅ **Parità Funzionale 100% Full Kit** |
 | **3** | **Parità Test di Accettazione** | `Test superati / Totale parity-tests.md` | **≥ 95%** (almeno 6 su 7 scenari conformi) | [x] `TEST-PAR-01` .. `TEST-PAR-07` convalidati end-to-end | [x] Pipeline CI build verde (`Android Build` & `Web CI`) | ✅ **100% Build Green su GitHub Actions** |
 | **4** | **Interoperabilità Export** | Importazione incrociata dello ZIP `kit_<id>.zip` | **100%** (Web apre ZIP Android e viceversa) | [x] Formato `export-format.md` serializzato con `fflate` | [x] Formato `export-format.md` serializzato con `java.util.zip` + `kotlinx.serialization` | ✅ **Schema v1.0.0 interoperabile** |
 | **5** | **Fluidità Rendering 3D** | Framerate medio durante rotazione continua | **60 FPS stabili** (frame time ≤ 16,6 ms) | [x] **60 FPS** (Three.js WebGL2 lazy loaded in chunk `three-engine`) | [x] **60 FPS** (Google Filament / SceneView 2.2.1 PBR GPU) | ✅ **Nessun calcolo 3D su CPU** |
@@ -130,3 +130,37 @@ Questa checklist costituisce lo strumento oggettivo a disposizione dei committen
   - Sostituiti i pulsanti testuali che andavano a capo con icone veloci (`🏠`, `📁`, `💾`) e menu a tendina `DropdownMenu`.
   - Riga nome kit ("Classico Verticale Casa Bozza") compattata su una singola riga (altezza 40dp, `singleLine = true`).
   - Nascosta `TopNavBar` ridondante durante l'editing in `SCR-EDITOR` per massimizzare lo spazio verticale su smartphone.
+
+---
+
+## Aggiornamento Fase 1.2: Architettura Full Kit & Clean Room Design (Release v1.1.0)
+
+- [x] **FASE 1: Generazione Procedurale Asset 3D Clean Room (`kit_full_outfit_clean.glb`)**
+  - Implementato generatore procedurale Node.js `scripts/generate-procedural-kit.mjs` che genera da zero un modello glTF/GLB proprietario 100% royalty-free senza geometrie o texture proprietarie.
+  - Generati e mappati 4 nodi distinti: `Jersey` (maglia con colletto e maniche), `Shorts` (pantaloncini con cuciture), `Socks` (calzettoni alti bicolore), `Mannequin` (manichino anatomico stilizzato per presentazione).
+  - UV atlas dedicato non sovrapposto con precisione geometrica su `web/public/models/kit_full_outfit_clean.glb` e `native/app/src/main/assets/models/kit_full_outfit_clean.glb`.
+
+- [x] **FASE 2: Aggiornamento Contratti Architetturali (`shared/spec/`)**
+  - `data-model.md`: Entità `Kit` estesa con oggetto `garments: { jersey: Garment, shorts: Garment, socks: Garment }`. Ogni capo dispone di layer, colori e opacità indipendenti.
+  - `export-format.md`: Aggiornata specifica export con supporto sia all'export del singolo capo (`jersey.png`, `shorts.png`, `socks.png`) sia all'archivio ZIP Full Kit comprensivo di manifest arricchito con checksum crittografici SHA-256 distinti per ciascun indumento.
+
+- [x] **FASE 3: UI/UX Modulare Multi-Capo (`ScreenEditor.svelte` & `EditorScreen.kt`)**
+  - **`FUN-EDIT-SHORTS` & `FUN-EDIT-SOCKS`**: Barra di selezione orizzontale `[ 👕 Maglia ] [ 🩳 Pantaloncini ] [ 🧦 Calzettoni ] [ 👤 Vista Completo ]`.
+  - Layer stack e ColorPicker HSV contestuali: la selezione di un capo carica esclusivamente i layer e la palette di quel capo, garantendo un'esperienza priva di disordine visivo.
+  - "Vista Completo" (Showcase Mode): modalità di presentazione a tutto schermo che nasconde i comandi sartoriali e offre un'anteprima pulita del completo 3D e del mockup 2D integrato con pulsante di esportazione rapido.
+  - **`FUN-MANNEQUIN-TOGGLE`**: Controllo UI per attivare o disattivare a runtime la visibilità del nodo `Mannequin`, permettendo sia la visualizzazione a manichino che l'ispezione della divisa "invisibile".
+
+- [x] **FASE 4: Motore 2D Compositing Multi-Texture (`compositor2d.ts` & `TextureEngine.kt`)**
+  - Pipeline di compositing 2048×2048 RGBA_8888 a tripla texture in memoria per Maglia, Pantaloncini e Calzettoni.
+  - Nuove funzioni di rendering mockup vettoriali con ombreggiature volumetriche realistiche (`renderShortsMockup512`, `renderSocksMockup512`, `renderFullKitMockup512`).
+  - **`FUN-EXPORT-SINGLE`**: Esportatore dedicato per scaricare il singolo PNG 2048×2048 del capo correntemente selezionato, oltre allo ZIP Full Kit standardizzato interoperabile.
+
+- [x] **FASE 5: Motore 3D PBR Multi-Mesh (`engine3d.ts` & `Kit3DRenderer.kt`)**
+  - Integrazione runtime di `kit_full_outfit_clean.glb` con binding multi-materiale sui nodi `Jersey`, `Shorts`, `Socks` e `Mannequin`.
+  - Materiali PBR fisicamente realistici: `roughness = 0.8`, `metalness = 0.0` e normal map procedurale micro-weave che simula la fibra tessile tecnica.
+  - Modalità isolamento capo: nascondimento automatico dei nodi non selezionati quando l'utente seleziona un capo singolo, e rendering d'insieme in modalità Vista Completo.
+
+- [x] **FASE 6: Espansione Catalogo Template Full Kit (`SCR-CATALOG`)**
+  - Aggiunti 5 template Full Kit preconfigurati (`tpl-fullkit-banda-classica`, `tpl-fullkit-maniche-contrasto`, `tpl-fullkit-design-minimal`, `tpl-fullkit-scaglione-atletico`, `tpl-fullkit-geometric-vapor`) su Web (`templates.ts`) e Android (`PresetsData.kt`).
+  - Badge visuale `👕🩳🧦 Full Kit` integrato nelle schede catalogo con render dinamico del mockup coordinato.
+

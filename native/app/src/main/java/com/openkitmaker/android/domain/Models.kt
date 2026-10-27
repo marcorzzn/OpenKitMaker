@@ -1,4 +1,4 @@
-﻿// Implements: SCR-HOME / SCR-CATALOG / SCR-EDITOR / SCR-SAVED / SCR-EXPORT / FUN-SELECT-TEMPLATE / FUN-MANAGE-LAYERS / FUN-EDIT-COLOR / FUN-EXPORT-ZIP
+// Implements: SCR-HOME / SCR-CATALOG / SCR-EDITOR / SCR-SAVED / SCR-EXPORT / FUN-SELECT-TEMPLATE / FUN-MANAGE-LAYERS / FUN-EDIT-COLOR / FUN-EXPORT-ZIP
 package com.openkitmaker.android.domain
 
 import kotlinx.serialization.SerialName
@@ -138,6 +138,109 @@ data class KitMetadata(
 )
 
 @Serializable
+enum class GarmentType(val labelIt: String, val emoji: String) {
+    JERSEY("Maglia", "👕"),
+    SHORTS("Pantaloncini", "🩳"),
+    SOCKS("Calzettoni", "🧦")
+}
+
+@Serializable
+data class Garment(
+    val type: GarmentType,
+    val layers: List<Layer>,
+    val baseColor: String = "#0F52BA",
+    val secondaryColor: String? = "#00C49F"
+)
+
+@Serializable
+data class KitGarments(
+    val jersey: Garment,
+    val shorts: Garment,
+    val socks: Garment
+)
+
+fun createDefaultGarments(jerseyLayers: List<Layer>): KitGarments {
+    val baseColor = jerseyLayers.firstOrNull { it.type == LayerType.BASE }?.color ?: "#0F52BA"
+    val secColor = jerseyLayers.firstOrNull { it.type == LayerType.BASE }?.secondaryColor ?: "#00C49F"
+
+    val shortsLayers = listOf(
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Base Pantaloncino",
+            type = LayerType.BASE,
+            color = "#09111E",
+            secondaryColor = baseColor,
+            zIndex = 0
+        ),
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Banda Laterale",
+            type = LayerType.PATTERN,
+            color = secColor,
+            zIndex = 1,
+            properties = LayerProperties(
+                patternStyle = PatternStyle.VERTICAL_STRIPES,
+                patternFrequency = 1
+            )
+        ),
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Stemma Coscia",
+            type = LayerType.BADGE,
+            color = secColor,
+            secondaryColor = "#FFFFFF",
+            zIndex = 2
+        ),
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Numero Coscia",
+            type = LayerType.NUMBER,
+            color = "#FFFFFF",
+            zIndex = 3,
+            properties = LayerProperties(
+                textValue = "9",
+                fontSize = 48f
+            )
+        )
+    )
+
+    val socksLayers = listOf(
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Base Calzettone",
+            type = LayerType.BASE,
+            color = baseColor,
+            secondaryColor = "#FFFFFF",
+            zIndex = 0
+        ),
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Bande Polpaccio",
+            type = LayerType.PATTERN,
+            color = "#FFFFFF",
+            zIndex = 1,
+            properties = LayerProperties(
+                patternStyle = PatternStyle.HORIZONTAL_HOOPS,
+                patternFrequency = 3
+            )
+        ),
+        Layer(
+            id = UUID.randomUUID().toString(),
+            name = "Risvolto",
+            type = LayerType.COLLAR,
+            color = secColor,
+            zIndex = 2
+        )
+    )
+
+    return KitGarments(
+        jersey = Garment(type = GarmentType.JERSEY, layers = jerseyLayers, baseColor = baseColor, secondaryColor = secColor),
+        shorts = Garment(type = GarmentType.SHORTS, layers = shortsLayers, baseColor = "#09111E", secondaryColor = secColor),
+        socks = Garment(type = GarmentType.SOCKS, layers = socksLayers, baseColor = baseColor, secondaryColor = "#FFFFFF")
+    )
+}
+
+@Serializable
 data class Kit(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
@@ -146,6 +249,7 @@ data class Kit(
     val updatedAt: String = Instant.now().toString(),
     val templateId: String,
     val layers: List<Layer>,
+    val garments: KitGarments = createDefaultGarments(layers),
     val metadata: KitMetadata = KitMetadata()
 )
 
@@ -174,13 +278,17 @@ data class ExportDimensions(
 @Serializable
 data class ExportChecksums(
     val textureSha256: String,
-    val previewSha256: String
+    val previewSha256: String,
+    val jerseySha256: String? = null,
+    val shortsSha256: String? = null,
+    val socksSha256: String? = null
 )
 
 @Serializable
 data class ManifestKitData(
     val templateId: String,
-    val layers: List<Layer>
+    val layers: List<Layer>,
+    val garments: KitGarments? = null
 )
 
 @Serializable

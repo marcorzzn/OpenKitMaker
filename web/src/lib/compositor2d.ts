@@ -8,6 +8,8 @@ import type {
   SponsorGeometry,
   BadgeShape,
   BadgePosition,
+  Garment,
+  GarmentType,
 } from '../types/kit';
 
 export const TEXTURE_SIZE = 2048;
@@ -797,93 +799,275 @@ export function drawUvPatternOverlay(
  * FUN-COMPOSITE-2D: Main 2048x2048 32-bit RGBA Compositor.
  * Executes deterministically in < 12ms to guarantee 60 FPS interactive color/layer updates (TEST-PAR-02).
  */
-export function compositeKit2048(
+function renderDecalCrest(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  primaryColor: string,
+  secondaryColor: string
+): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, -90);
+  ctx.lineTo(75, -50);
+  ctx.lineTo(75, 40);
+  ctx.quadraticCurveTo(0, 110, 0, 120);
+  ctx.quadraticCurveTo(0, 110, -75, 40);
+  ctx.lineTo(-75, -50);
+  ctx.closePath();
+  ctx.fillStyle = primaryColor;
+  ctx.fill();
+  ctx.strokeStyle = secondaryColor;
+  ctx.lineWidth = 10;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 32, 0, Math.PI * 2);
+  ctx.fillStyle = secondaryColor;
+  ctx.fill();
+  ctx.restore();
+}
+
+export function compositeJersey2048(
   targetCanvas: HTMLCanvasElement | OffscreenCanvas,
-  kit: Kit,
-  options: { showUvGuides?: boolean } = {}
+  garment: Garment,
+  options: { finishType?: string; showUvGuides?: boolean } = {}
 ): void {
   if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
     targetCanvas.width = TEXTURE_SIZE;
     targetCanvas.height = TEXTURE_SIZE;
   }
-
   const ctx = targetCanvas.getContext('2d') as
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D
     | null;
   if (!ctx) return;
-
   ctx.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
 
-  // Sort layers bottom-to-top by zIndex
-  const orderedLayers = [...kit.layers].sort((a, b) => a.zIndex - b.zIndex);
-
+  const orderedLayers = [...garment.layers].sort((a, b) => a.zIndex - b.zIndex);
   for (const layer of orderedLayers) {
     if (!layer.visible || layer.opacity <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity));
+    ctx.globalCompositeOperation = mapBlendMode(layer.blendMode);
 
+    switch (layer.type) {
+      case 'BASE': renderBaseLayer(ctx, layer); break;
+      case 'PATTERN': renderPatternLayer(ctx, layer); break;
+      case 'SLEEVES': renderSleevesLayer(ctx, layer); break;
+      case 'COLLAR': renderCollarLayer(ctx, layer); break;
+      case 'BADGE': renderBadgeLayer(ctx, layer); break;
+      case 'SPONSOR': renderSponsorLayer(ctx, layer); break;
+      case 'TEXT_NAME': renderTextNameLayer(ctx, layer); break;
+      case 'NUMBER': renderNumberLayer(ctx, layer); break;
+    }
+    ctx.restore();
+  }
+
+  drawFabricMicroWeave(ctx, options.finishType || 'PRO_VAPOR');
+  if (options.showUvGuides) {
+    drawUvPatternOverlay(ctx);
+  }
+}
+
+export function compositeShorts2048(
+  targetCanvas: HTMLCanvasElement | OffscreenCanvas,
+  garment: Garment,
+  options: { finishType?: string; showUvGuides?: boolean } = {}
+): void {
+  if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
+    targetCanvas.width = TEXTURE_SIZE;
+    targetCanvas.height = TEXTURE_SIZE;
+  }
+  const ctx = targetCanvas.getContext('2d') as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
+  if (!ctx) return;
+  ctx.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+
+  const orderedLayers = [...garment.layers].sort((a, b) => a.zIndex - b.zIndex);
+  for (const layer of orderedLayers) {
+    if (!layer.visible || layer.opacity <= 0) continue;
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity));
     ctx.globalCompositeOperation = mapBlendMode(layer.blendMode);
 
     switch (layer.type) {
       case 'BASE':
-        renderBaseLayer(ctx, layer);
+        ctx.fillStyle = layer.color || '#09111E';
+        ctx.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+        if (layer.secondaryColor) {
+          ctx.fillStyle = layer.secondaryColor;
+          ctx.fillRect(40, 1940, 940, 60);
+          ctx.fillRect(1068, 1940, 940, 60);
+          ctx.fillRect(40, 920, 940, 60);
+          ctx.fillRect(1068, 920, 940, 60);
+        }
         break;
       case 'PATTERN':
-        renderPatternLayer(ctx, layer);
-        break;
-      case 'SLEEVES':
-        renderSleevesLayer(ctx, layer);
-        break;
-      case 'COLLAR':
-        renderCollarLayer(ctx, layer);
+        ctx.fillStyle = layer.color || '#00C49F';
+        ctx.fillRect(40, 1060, 140, 940);
+        ctx.fillRect(1868, 1060, 140, 940);
+        ctx.fillRect(40, 40, 140, 940);
+        ctx.fillRect(1868, 40, 140, 940);
         break;
       case 'BADGE':
-        renderBadgeLayer(ctx, layer);
-        break;
-      case 'SPONSOR':
-        renderSponsorLayer(ctx, layer);
-        break;
-      case 'TEXT_NAME':
-        renderTextNameLayer(ctx, layer);
+        ctx.save();
+        ctx.translate(500, 1600);
+        ctx.scale(0.8, 0.8);
+        renderDecalCrest(ctx, layer.color || '#00C49F', layer.secondaryColor || '#FFFFFF');
+        ctx.restore();
         break;
       case 'NUMBER':
-        renderNumberLayer(ctx, layer);
+        ctx.save();
+        ctx.translate(1520, 1650);
+        ctx.fillStyle = layer.color || '#FFFFFF';
+        ctx.font = '700 220px "Barlow Condensed", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(layer.properties.numberText || '9'), 0, 0);
+        ctx.restore();
+        break;
+      default:
         break;
     }
-
     ctx.restore();
   }
 
-  drawFabricMicroWeave(ctx, kit.metadata?.finishType || 'PRO_VAPOR');
+  drawFabricMicroWeave(ctx, options.finishType || 'PRO_VAPOR');
+}
 
-  if (options.showUvGuides) {
-    drawUvPatternOverlay(ctx);
+export function compositeSocks2048(
+  targetCanvas: HTMLCanvasElement | OffscreenCanvas,
+  garment: Garment,
+  options: { finishType?: string; showUvGuides?: boolean } = {}
+): void {
+  if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
+    targetCanvas.width = TEXTURE_SIZE;
+    targetCanvas.height = TEXTURE_SIZE;
+  }
+  const ctx = targetCanvas.getContext('2d') as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
+  if (!ctx) return;
+  ctx.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+
+  const orderedLayers = [...garment.layers].sort((a, b) => a.zIndex - b.zIndex);
+  for (const layer of orderedLayers) {
+    if (!layer.visible || layer.opacity <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity));
+    ctx.globalCompositeOperation = mapBlendMode(layer.blendMode);
+
+    switch (layer.type) {
+      case 'BASE':
+        ctx.fillStyle = layer.color || '#0F52BA';
+        ctx.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+        break;
+      case 'COLLAR':
+        ctx.fillStyle = layer.color || '#00C49F';
+        ctx.fillRect(40, 40, 940, 320);
+        ctx.fillRect(1068, 40, 940, 320);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 4;
+        for (let rx = 50; rx < 980; rx += 24) {
+          ctx.beginPath();
+          ctx.moveTo(rx, 40);
+          ctx.lineTo(rx, 360);
+          ctx.stroke();
+        }
+        for (let rx = 1080; rx < 2000; rx += 24) {
+          ctx.beginPath();
+          ctx.moveTo(rx, 40);
+          ctx.lineTo(rx, 360);
+          ctx.stroke();
+        }
+        break;
+      case 'PATTERN':
+        ctx.fillStyle = layer.color || '#FFFFFF';
+        const hoopH = 75;
+        const gapH = 65;
+        for (let hy = 580; hy < 1100; hy += hoopH + gapH) {
+          ctx.fillRect(40, hy, 940, hoopH);
+          ctx.fillRect(1068, hy, 940, hoopH);
+        }
+        break;
+      case 'BADGE':
+        ctx.save();
+        ctx.translate(512, 1350);
+        ctx.scale(0.65, 0.65);
+        renderDecalCrest(ctx, layer.color || '#00C49F', layer.secondaryColor || '#FFFFFF');
+        ctx.restore();
+        ctx.save();
+        ctx.translate(1536, 1350);
+        ctx.scale(0.65, 0.65);
+        renderDecalCrest(ctx, layer.color || '#00C49F', layer.secondaryColor || '#FFFFFF');
+        ctx.restore();
+        break;
+      default:
+        break;
+    }
+    ctx.restore();
+  }
+
+  drawFabricMicroWeave(ctx, options.finishType || 'PRO_VAPOR');
+}
+
+export function compositeGarment2048(
+  targetCanvas: HTMLCanvasElement | OffscreenCanvas,
+  garment: Garment,
+  options: { finishType?: string; showUvGuides?: boolean } = {}
+): void {
+  switch (garment.type) {
+    case 'SHORTS':
+      compositeShorts2048(targetCanvas, garment, options);
+      break;
+    case 'SOCKS':
+      compositeSocks2048(targetCanvas, garment, options);
+      break;
+    case 'JERSEY':
+    default:
+      compositeJersey2048(targetCanvas, garment, options);
+      break;
   }
 }
 
-/**
- * Renders a 512x512 Minikit Preview showing tailored Front & Back jersey silhouettes
- * sampled directly from the 2048x2048 composited texture (FUN-SAVE-LOCAL & SCR-EXPORT).
- */
-export function renderMinikitPreview512(
-  previewCanvas: HTMLCanvasElement,
-  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
-  kit: Kit
-): string {
-  previewCanvas.width = PREVIEW_SIZE;
-  previewCanvas.height = PREVIEW_SIZE;
-  const ctx = previewCanvas.getContext('2d');
-  if (!ctx) return '';
+export function compositeKit2048(
+  targetCanvas: HTMLCanvasElement | OffscreenCanvas,
+  kit: Kit,
+  options: { garmentType?: GarmentType; showUvGuides?: boolean } = {}
+): void {
+  const gType = options.garmentType || 'JERSEY';
+  if (kit.garments) {
+    const garment = kit.garments[gType.toLowerCase() as 'jersey' | 'shorts' | 'socks'];
+    if (garment) {
+      compositeGarment2048(targetCanvas, garment, {
+        finishType: kit.metadata?.finishType,
+        showUvGuides: options.showUvGuides,
+      });
+      return;
+    }
+  }
 
-  // Studio dark card backdrop
+  compositeJersey2048(
+    targetCanvas,
+    {
+      type: 'JERSEY',
+      layers: kit.layers,
+      baseColor: kit.layers[0]?.color || '#0F52BA',
+      secondaryColor: kit.layers[0]?.secondaryColor,
+    },
+    { finishType: kit.metadata?.finishType, showUvGuides: options.showUvGuides }
+  );
+}
+
+function drawStudioBackdrop(ctx: CanvasRenderingContext2D): void {
   const grad = ctx.createRadialGradient(256, 220, 40, 256, 256, 320);
   grad.addColorStop(0, '#1E293B');
   grad.addColorStop(1, '#0F141C');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
 
-  // Subtle architectural grid lines
   ctx.strokeStyle = 'rgba(46, 61, 86, 0.45)';
   ctx.lineWidth = 1;
   for (let i = 64; i < PREVIEW_SIZE; i += 64) {
@@ -894,140 +1078,359 @@ export function renderMinikitPreview512(
     ctx.lineTo(PREVIEW_SIZE, i);
     ctx.stroke();
   }
+}
 
-  const drawJerseySilhouette = (
-    cx: number,
-    cy: number,
-    scale: number,
-    isBack: boolean
-  ) => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-
-    // Jersey tailored path centered at (0,0), width ~280, height ~320
-    const defineJerseyPath = () => {
-      ctx.beginPath();
-      ctx.moveTo(-58, -148);
-      if (isBack) {
-        ctx.quadraticCurveTo(0, -134, 58, -148);
-      } else {
-        ctx.lineTo(0, -108);
-        ctx.lineTo(58, -148);
-      }
-      ctx.lineTo(106, -136);
-      ctx.lineTo(154, -52);
-      ctx.lineTo(116, -24);
-      ctx.lineTo(92, -66);
-      ctx.lineTo(92, 148);
-      ctx.lineTo(-92, 148);
-      ctx.lineTo(-92, -66);
-      ctx.lineTo(-116, -24);
-      ctx.lineTo(-154, -52);
-      ctx.lineTo(-106, -136);
-      ctx.closePath();
-    };
-
-    // Drop shadow
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 12;
-    defineJerseyPath();
-    ctx.fillStyle = '#0F141C';
-    ctx.fill();
-    ctx.restore();
-
-    // Clip to jersey silhouette and draw from 2048x2048 texture
-    defineJerseyPath();
-    ctx.clip();
-
-    const srcX = isBack ? UV_REGIONS.back.x : UV_REGIONS.front.x;
-    const srcY = 0;
-    ctx.drawImage(
-      sourceTexture2048 as CanvasImageSource,
-      srcX,
-      srcY,
-      1024,
-      1360,
-      -105,
-      -152,
-      210,
-      304
-    );
-
-    // Draw Left & Right sleeves from sleeve UV islands with matching arm angles
-    ctx.save();
-    ctx.translate(-120, -80);
-    ctx.rotate(0.52);
-    ctx.drawImage(
-      sourceTexture2048 as CanvasImageSource,
-      UV_REGIONS.sleeveLeft.x,
-      UV_REGIONS.sleeveLeft.y,
-      UV_REGIONS.sleeveLeft.w,
-      UV_REGIONS.sleeveLeft.h,
-      -36,
-      -56,
-      74,
-      126
-    );
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(120, -80);
-    ctx.rotate(-0.52);
-    ctx.drawImage(
-      sourceTexture2048 as CanvasImageSource,
-      UV_REGIONS.sleeveRight.x,
-      UV_REGIONS.sleeveRight.y,
-      UV_REGIONS.sleeveRight.w,
-      UV_REGIONS.sleeveRight.h,
-      -38,
-      -56,
-      74,
-      126
-    );
-    ctx.restore();
-
-    // Subtle 3D shading overlay on silhouette
-    const shade = ctx.createLinearGradient(-140, 0, 140, 0);
-    shade.addColorStop(0, 'rgba(0,0,0,0.28)');
-    shade.addColorStop(0.2, 'rgba(255,255,255,0.06)');
-    shade.addColorStop(0.5, 'rgba(255,255,255,0)');
-    shade.addColorStop(0.8, 'rgba(255,255,255,0.06)');
-    shade.addColorStop(1, 'rgba(0,0,0,0.32)');
-    ctx.fillStyle = shade;
-    ctx.fillRect(-160, -160, 320, 320);
-
-    ctx.restore();
-
-    // Crisp outline
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    defineJerseyPath();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    ctx.restore();
-  };
-
-  // Back silhouette slightly offset to the right-back, Front silhouette prominent on left-front
-  drawJerseySilhouette(330, 258, 0.92, true);
-  drawJerseySilhouette(188, 244, 1.02, false);
-
-  // Footer metadata bar inside minikit
-  ctx.fillStyle = 'rgba(15, 20, 28, 0.86)';
+function drawMockupFooter(ctx: CanvasRenderingContext2D, kit: Kit, garmentLabel: string): void {
+  ctx.fillStyle = 'rgba(15, 20, 28, 0.88)';
   ctx.fillRect(0, 464, PREVIEW_SIZE, 48);
-  ctx.font = '700 18px "Barlow Condensed", sans-serif';
+  ctx.font = '700 17px "Barlow Condensed", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(kit.name.toUpperCase().slice(0, 28), 18, 494);
+  ctx.fillText(`${kit.name.toUpperCase().slice(0, 24)} · ${garmentLabel}`, 18, 494);
 
   ctx.font = '500 13px "JetBrains Mono", monospace';
   ctx.fillStyle = '#00C49F';
   ctx.textAlign = 'right';
   ctx.fillText(`${kit.category} · 2048px`, PREVIEW_SIZE - 18, 493);
   ctx.textAlign = 'left';
+}
 
+function drawSingleJerseyOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  cx: number,
+  cy: number,
+  scale: number,
+  isBack: boolean
+): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const defineJerseyPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-58, -148);
+    if (isBack) {
+      ctx.quadraticCurveTo(0, -134, 58, -148);
+    } else {
+      ctx.lineTo(0, -108);
+      ctx.lineTo(58, -148);
+    }
+    ctx.lineTo(106, -136);
+    ctx.lineTo(154, -52);
+    ctx.lineTo(116, -24);
+    ctx.lineTo(92, -66);
+    ctx.lineTo(92, 148);
+    ctx.lineTo(-92, 148);
+    ctx.lineTo(-92, -66);
+    ctx.lineTo(-116, -24);
+    ctx.lineTo(-154, -52);
+    ctx.lineTo(-106, -136);
+    ctx.closePath();
+  };
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+  defineJerseyPath();
+  ctx.fillStyle = '#0F141C';
+  ctx.fill();
+  ctx.restore();
+
+  defineJerseyPath();
+  ctx.clip();
+
+  const srcX = isBack ? UV_REGIONS.back.x : UV_REGIONS.front.x;
+  ctx.drawImage(sourceTexture2048 as CanvasImageSource, srcX, 0, 1024, 1360, -105, -152, 210, 304);
+
+  ctx.save();
+  ctx.translate(-120, -80);
+  ctx.rotate(0.52);
+  ctx.drawImage(
+    sourceTexture2048 as CanvasImageSource,
+    UV_REGIONS.sleeveLeft.x, UV_REGIONS.sleeveLeft.y, UV_REGIONS.sleeveLeft.w, UV_REGIONS.sleeveLeft.h,
+    -36, -56, 74, 126
+  );
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(120, -80);
+  ctx.rotate(-0.52);
+  ctx.drawImage(
+    sourceTexture2048 as CanvasImageSource,
+    UV_REGIONS.sleeveRight.x, UV_REGIONS.sleeveRight.y, UV_REGIONS.sleeveRight.w, UV_REGIONS.sleeveRight.h,
+    -38, -56, 74, 126
+  );
+  ctx.restore();
+
+  const shade = ctx.createLinearGradient(-140, 0, 140, 0);
+  shade.addColorStop(0, 'rgba(0,0,0,0.28)');
+  shade.addColorStop(0.2, 'rgba(255,255,255,0.06)');
+  shade.addColorStop(0.5, 'rgba(255,255,255,0)');
+  shade.addColorStop(0.8, 'rgba(255,255,255,0.06)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.32)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(-160, -160, 320, 320);
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  defineJerseyPath();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSingleShortsOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  cx: number,
+  cy: number,
+  scale: number,
+  isBack: boolean
+): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const defineShortsPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-92, -90);
+    ctx.lineTo(92, -90);
+    ctx.lineTo(105, 50);
+    ctx.lineTo(110, 110);
+    ctx.lineTo(24, 110);
+    ctx.lineTo(0, 36);
+    ctx.lineTo(-24, 110);
+    ctx.lineTo(-110, 110);
+    ctx.lineTo(-105, 50);
+    ctx.closePath();
+  };
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+  defineShortsPath();
+  ctx.fillStyle = '#0F141C';
+  ctx.fill();
+  ctx.restore();
+
+  defineShortsPath();
+  ctx.clip();
+
+  const srcY = isBack ? 40 : 1060;
+  ctx.drawImage(
+    sourceTexture2048 as CanvasImageSource,
+    0, srcY, 2048, 988,
+    -110, -90, 220, 200
+  );
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-92, -70);
+  ctx.lineTo(92, -70);
+  ctx.stroke();
+
+  const shade = ctx.createLinearGradient(-110, 0, 110, 0);
+  shade.addColorStop(0, 'rgba(0,0,0,0.25)');
+  shade.addColorStop(0.2, 'rgba(255,255,255,0.08)');
+  shade.addColorStop(0.5, 'rgba(255,255,255,0)');
+  shade.addColorStop(0.8, 'rgba(255,255,255,0.08)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(-120, -100, 240, 220);
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  defineShortsPath();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSingleSockOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  cx: number,
+  cy: number,
+  scale: number,
+  isRight: boolean
+): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale * (isRight ? -1 : 1), scale);
+
+  const defineSockPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-36, -145);
+    ctx.lineTo(36, -145);
+    ctx.lineTo(34, 40);
+    ctx.lineTo(32, 90);
+    ctx.lineTo(76, 126);
+    ctx.lineTo(60, 150);
+    ctx.lineTo(-14, 115);
+    ctx.lineTo(-24, 40);
+    ctx.lineTo(-36, -145);
+    ctx.closePath();
+  };
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+  defineSockPath();
+  ctx.fillStyle = '#0F141C';
+  ctx.fill();
+  ctx.restore();
+
+  defineSockPath();
+  ctx.clip();
+
+  const srcX = isRight ? 1068 : 40;
+  ctx.drawImage(
+    sourceTexture2048 as CanvasImageSource,
+    srcX, 40, 940, 1960,
+    -36, -145, 112, 295
+  );
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-36, -95);
+  ctx.lineTo(36, -95);
+  ctx.stroke();
+
+  const shade = ctx.createLinearGradient(-36, 0, 36, 0);
+  shade.addColorStop(0, 'rgba(0,0,0,0.3)');
+  shade.addColorStop(0.3, 'rgba(255,255,255,0.08)');
+  shade.addColorStop(0.7, 'rgba(255,255,255,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(-45, -150, 130, 310);
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale * (isRight ? -1 : 1), scale);
+  defineSockPath();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
+export function renderJerseyMockup512(
+  previewCanvas: HTMLCanvasElement,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  kit: Kit
+): string {
+  previewCanvas.width = PREVIEW_SIZE;
+  previewCanvas.height = PREVIEW_SIZE;
+  const ctx = previewCanvas.getContext('2d');
+  if (!ctx) return '';
+
+  drawStudioBackdrop(ctx);
+  drawSingleJerseyOnCanvas(ctx, sourceTexture2048, 330, 258, 0.92, true);
+  drawSingleJerseyOnCanvas(ctx, sourceTexture2048, 188, 244, 1.02, false);
+  drawMockupFooter(ctx, kit, 'MAGLIA GARA');
   return previewCanvas.toDataURL('image/png');
+}
+
+export function renderShortsMockup512(
+  previewCanvas: HTMLCanvasElement,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  kit: Kit
+): string {
+  previewCanvas.width = PREVIEW_SIZE;
+  previewCanvas.height = PREVIEW_SIZE;
+  const ctx = previewCanvas.getContext('2d');
+  if (!ctx) return '';
+
+  drawStudioBackdrop(ctx);
+  drawSingleShortsOnCanvas(ctx, sourceTexture2048, 330, 250, 0.96, true);
+  drawSingleShortsOnCanvas(ctx, sourceTexture2048, 185, 240, 1.05, false);
+  drawMockupFooter(ctx, kit, 'PANTALONCINI');
+  return previewCanvas.toDataURL('image/png');
+}
+
+export function renderSocksMockup512(
+  previewCanvas: HTMLCanvasElement,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  kit: Kit
+): string {
+  previewCanvas.width = PREVIEW_SIZE;
+  previewCanvas.height = PREVIEW_SIZE;
+  const ctx = previewCanvas.getContext('2d');
+  if (!ctx) return '';
+
+  drawStudioBackdrop(ctx);
+  drawSingleSockOnCanvas(ctx, sourceTexture2048, 190, 235, 1.0, false);
+  drawSingleSockOnCanvas(ctx, sourceTexture2048, 322, 235, 1.0, true);
+  drawMockupFooter(ctx, kit, 'CALZETTONI');
+  return previewCanvas.toDataURL('image/png');
+}
+
+export function renderFullKitMockup512(
+  previewCanvas: HTMLCanvasElement,
+  textures: {
+    jersey: HTMLCanvasElement | OffscreenCanvas;
+    shorts: HTMLCanvasElement | OffscreenCanvas;
+    socks: HTMLCanvasElement | OffscreenCanvas;
+  },
+  kit: Kit
+): string {
+  previewCanvas.width = PREVIEW_SIZE;
+  previewCanvas.height = PREVIEW_SIZE;
+  const ctx = previewCanvas.getContext('2d');
+  if (!ctx) return '';
+
+  drawStudioBackdrop(ctx);
+  drawSingleSockOnCanvas(ctx, textures.socks, 215, 385, 0.58, false);
+  drawSingleSockOnCanvas(ctx, textures.socks, 297, 385, 0.58, true);
+  drawSingleShortsOnCanvas(ctx, textures.shorts, 256, 275, 0.72, false);
+  drawSingleJerseyOnCanvas(ctx, textures.jersey, 256, 125, 0.76, false);
+  drawMockupFooter(ctx, kit, 'COMPLETO UFFICIALE');
+  return previewCanvas.toDataURL('image/png');
+}
+
+export function renderMinikitPreview512(
+  previewCanvas: HTMLCanvasElement,
+  sourceTexture2048: HTMLCanvasElement | OffscreenCanvas,
+  kit: Kit,
+  garmentType: GarmentType | 'ALL' = 'JERSEY'
+): string {
+  if (garmentType === 'SHORTS') {
+    return renderShortsMockup512(previewCanvas, sourceTexture2048, kit);
+  }
+  if (garmentType === 'SOCKS') {
+    return renderSocksMockup512(previewCanvas, sourceTexture2048, kit);
+  }
+  if (garmentType === 'ALL' && kit.garments) {
+    const shortsTex = document.createElement('canvas');
+    shortsTex.width = TEXTURE_SIZE;
+    shortsTex.height = TEXTURE_SIZE;
+    compositeShorts2048(shortsTex, kit.garments.shorts);
+
+    const socksTex = document.createElement('canvas');
+    socksTex.width = TEXTURE_SIZE;
+    socksTex.height = TEXTURE_SIZE;
+    compositeSocks2048(socksTex, kit.garments.socks);
+
+    return renderFullKitMockup512(
+      previewCanvas,
+      { jersey: sourceTexture2048, shorts: shortsTex, socks: socksTex },
+      kit
+    );
+  }
+  return renderJerseyMockup512(previewCanvas, sourceTexture2048, kit);
 }

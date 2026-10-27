@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EXPORT / FUN-EXPORT-ZIP
+// Implements: SCR-EXPORT / FUN-EXPORT-ZIP
 package com.openkitmaker.android.export
 
 import android.content.ContentValues
@@ -48,22 +48,25 @@ class ZipExporter @AssistedInject constructor(
         val kit = kitRepository.getKitById(kitId) ?: return@withContext Result.failure()
 
         try {
-            val fullBmp = TextureEngine.compositeKitBitmap(
-                kit = kit,
-                width = TextureEngine.FULL_RESOLUTION,
-                height = TextureEngine.FULL_RESOLUTION
-            )
-            val previewBmp = Bitmap.createScaledBitmap(
-                fullBmp,
-                TextureEngine.PREVIEW_RESOLUTION,
-                TextureEngine.PREVIEW_RESOLUTION,
-                true
-            )
+            val jerseyBmp = TextureEngine.compositeJerseyBitmap(kit, TextureEngine.FULL_RESOLUTION, TextureEngine.FULL_RESOLUTION)
+            val shortsBmp = TextureEngine.compositeShortsBitmap(kit, TextureEngine.FULL_RESOLUTION, TextureEngine.FULL_RESOLUTION)
+            val socksBmp = TextureEngine.compositeSocksBitmap(kit, TextureEngine.FULL_RESOLUTION, TextureEngine.FULL_RESOLUTION)
+            val previewBmp = TextureEngine.renderFullKitMockupBitmap(kit, TextureEngine.PREVIEW_RESOLUTION, TextureEngine.PREVIEW_RESOLUTION)
 
-            val textureBytes = bitmapToPngBytes(fullBmp)
+            val jerseyBytes = bitmapToPngBytes(jerseyBmp)
+            val shortsBytes = bitmapToPngBytes(shortsBmp)
+            val socksBytes = bitmapToPngBytes(socksBmp)
             val previewBytes = bitmapToPngBytes(previewBmp)
-            fullBmp.recycle()
+
+            jerseyBmp.recycle()
+            shortsBmp.recycle()
+            socksBmp.recycle()
             previewBmp.recycle()
+
+            val jerseySha = sha256Hex(jerseyBytes)
+            val shortsSha = sha256Hex(shortsBytes)
+            val socksSha = sha256Hex(socksBytes)
+            val previewSha = sha256Hex(previewBytes)
 
             val manifest = ExportManifest(
                 kitId = kit.id,
@@ -72,17 +75,21 @@ class ZipExporter @AssistedInject constructor(
                 exportTimestamp = Instant.now().toString(),
                 generator = GeneratorInfo(
                     platform = "OpenKitMaker-Native",
-                    version = "1.0.0",
-                    buildNumber = "100"
+                    version = "1.1.0",
+                    buildNumber = "110"
                 ),
                 dimensions = ExportDimensions(width = 2048, height = 2048),
                 checksums = ExportChecksums(
-                    textureSha256 = sha256Hex(textureBytes),
-                    previewSha256 = sha256Hex(previewBytes)
+                    textureSha256 = jerseySha,
+                    previewSha256 = previewSha,
+                    jerseySha256 = jerseySha,
+                    shortsSha256 = shortsSha,
+                    socksSha256 = socksSha
                 ),
                 kitData = ManifestKitData(
                     templateId = kit.templateId,
-                    layers = kit.layers
+                    layers = kit.layers,
+                    garments = kit.garments
                 )
             )
 
@@ -91,7 +98,9 @@ class ZipExporter @AssistedInject constructor(
             val savedUri = writeZipToMediaStore(
                 context = appContext,
                 fileName = fileName,
-                textureBytes = textureBytes,
+                jerseyBytes = jerseyBytes,
+                shortsBytes = shortsBytes,
+                socksBytes = socksBytes,
                 previewBytes = previewBytes,
                 manifestBytes = manifestBytes
             )
@@ -127,7 +136,9 @@ class ZipExporter @AssistedInject constructor(
     private fun writeZipToMediaStore(
         context: Context,
         fileName: String,
-        textureBytes: ByteArray,
+        jerseyBytes: ByteArray,
+        shortsBytes: ByteArray,
+        socksBytes: ByteArray,
         previewBytes: ByteArray,
         manifestBytes: ByteArray
     ): String {
@@ -152,8 +163,16 @@ class ZipExporter @AssistedInject constructor(
 
         resolver.openOutputStream(uri)?.use { rawOut ->
             ZipOutputStream(rawOut).use { zip ->
-                zip.putNextEntry(ZipEntry("texture.png"))
-                zip.write(textureBytes)
+                zip.putNextEntry(ZipEntry("jersey.png"))
+                zip.write(jerseyBytes)
+                zip.closeEntry()
+
+                zip.putNextEntry(ZipEntry("shorts.png"))
+                zip.write(shortsBytes)
+                zip.closeEntry()
+
+                zip.putNextEntry(ZipEntry("socks.png"))
+                zip.write(socksBytes)
                 zip.closeEntry()
 
                 zip.putNextEntry(ZipEntry("preview.png"))
@@ -162,6 +181,11 @@ class ZipExporter @AssistedInject constructor(
 
                 zip.putNextEntry(ZipEntry("manifest.json"))
                 zip.write(manifestBytes)
+                zip.closeEntry()
+
+                // Retrocompatibilità con v1.0
+                zip.putNextEntry(ZipEntry("texture.png"))
+                zip.write(jerseyBytes)
                 zip.closeEntry()
             }
         } ?: throw IOException("Unable to open ZIP OutputStream")

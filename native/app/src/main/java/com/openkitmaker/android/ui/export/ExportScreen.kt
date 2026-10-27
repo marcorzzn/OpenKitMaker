@@ -1,4 +1,4 @@
-﻿// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP
+// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP
 package com.openkitmaker.android.ui.export
 
 import androidx.compose.foundation.Image
@@ -76,19 +76,40 @@ fun ExportScreen(
                 )
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = viewModel::exportPngLossless,
-                    enabled = !isExporting
-                ) {
-                    Text(StringsIt.EXPORT_OPTION_PNG_TITLE)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Esporta Singola Texture PNG (2048×2048):",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF94A3B8)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { viewModel.exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.JERSEY) },
+                        enabled = !isExporting
+                    ) {
+                        Text("👕 Maglia")
+                    }
+                    Button(
+                        onClick = { viewModel.exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.SHORTS) },
+                        enabled = !isExporting
+                    ) {
+                        Text("🩳 Shorts")
+                    }
+                    Button(
+                        onClick = { viewModel.exportGarmentPngLossless(com.openkitmaker.android.domain.GarmentType.SOCKS) },
+                        enabled = !isExporting
+                    ) {
+                        Text("🧦 Calze")
+                    }
                 }
 
                 Button(
                     onClick = viewModel::exportInteroperableZip,
-                    enabled = !isExporting
+                    enabled = !isExporting,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("${StringsIt.EXPORT_OPTION_ZIP_TITLE} (texture.png + preview.png + manifest.json)")
+                    Text("Esporta Archivio Full Kit (.ZIP)")
                 }
 
                 if (isExporting) {
