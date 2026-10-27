@@ -84,6 +84,9 @@ fun EditorScreen(
     val selectedLayerId by viewModel.selectedLayerId.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
     val albedoBitmap by viewModel.albedoBitmap.collectAsState()
+    val jerseyBitmap by viewModel.jerseyBitmap.collectAsState()
+    val shortsBitmap by viewModel.shortsBitmap.collectAsState()
+    val socksBitmap by viewModel.socksBitmap.collectAsState()
     val previewMockupBitmap by viewModel.previewMockupBitmap.collectAsState()
     val yaw by viewModel.yaw.collectAsState()
     val pitch by viewModel.pitch.collectAsState()
@@ -432,6 +435,10 @@ fun EditorScreen(
                         ) {
                             Kit3DRenderer(
                                 albedoBitmap = albedoBitmap,
+                                jerseyBitmap = jerseyBitmap,
+                                shortsBitmap = shortsBitmap,
+                                socksBitmap = socksBitmap,
+                                selectedGarment = activeGarmentType,
                                 lightingMode = currentKit.metadata.lightingMode,
                                 roughness = currentKit.metadata.roughness,
                                 metalness = currentKit.metadata.metalness,

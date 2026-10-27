@@ -52,6 +52,15 @@ class EditorViewModel @Inject constructor(
     private val _viewMode = MutableStateFlow(EditorViewMode.VIEW_SPLIT)
     val viewMode: StateFlow<EditorViewMode> = _viewMode.asStateFlow()
 
+    private val _jerseyBitmap = MutableStateFlow<Bitmap?>(null)
+    val jerseyBitmap: StateFlow<Bitmap?> = _jerseyBitmap.asStateFlow()
+
+    private val _shortsBitmap = MutableStateFlow<Bitmap?>(null)
+    val shortsBitmap: StateFlow<Bitmap?> = _shortsBitmap.asStateFlow()
+
+    private val _socksBitmap = MutableStateFlow<Bitmap?>(null)
+    val socksBitmap: StateFlow<Bitmap?> = _socksBitmap.asStateFlow()
+
     private val _albedoBitmap = MutableStateFlow<Bitmap?>(null)
     val albedoBitmap: StateFlow<Bitmap?> = _albedoBitmap.asStateFlow()
 
@@ -85,6 +94,7 @@ class EditorViewModel @Inject constructor(
             val layers = getActiveLayers(current, selection)
             _selectedLayerId.value = layers.firstOrNull()?.id
         }
+        recomposite2D(current)
     }
 
     fun toggleMannequin() {
@@ -102,10 +112,30 @@ class EditorViewModel @Inject constructor(
 
     private fun recomposite2D(currentKit: Kit) {
         viewModelScope.launch(Dispatchers.Default) {
-            val bmp = TextureEngine.compositeKitBitmap(currentKit, 2048, 2048)
-            val mockup = TextureEngine.renderJerseyMockupBitmap(currentKit, bmp, 1024, 1024)
+            val selection = _activeGarmentType.value
+            val jerseyBmp = TextureEngine.compositeJerseyBitmap(currentKit, 2048, 2048)
+            val shortsBmp = TextureEngine.compositeShortsBitmap(currentKit, 2048, 2048)
+            val socksBmp = TextureEngine.compositeSocksBitmap(currentKit, 2048, 2048)
+
+            val activeBmp = when (selection) {
+                GarmentSelection.JERSEY -> jerseyBmp
+                GarmentSelection.SHORTS -> shortsBmp
+                GarmentSelection.SOCKS -> socksBmp
+                GarmentSelection.ALL -> jerseyBmp
+            }
+
+            val mockup = when (selection) {
+                GarmentSelection.JERSEY -> TextureEngine.renderJerseyMockupBitmap(currentKit, jerseyBmp, 1024, 1024)
+                GarmentSelection.SHORTS -> TextureEngine.renderShortsMockupBitmap(currentKit, shortsBmp, 1024, 1024)
+                GarmentSelection.SOCKS -> TextureEngine.renderSocksMockupBitmap(currentKit, socksBmp, 1024, 1024)
+                GarmentSelection.ALL -> TextureEngine.renderFullKitMockupBitmap(currentKit, jerseyBmp, shortsBmp, socksBmp, 1024, 1024)
+            }
+
             withContext(Dispatchers.Main) {
-                _albedoBitmap.value = bmp
+                _jerseyBitmap.value = jerseyBmp
+                _shortsBitmap.value = shortsBmp
+                _socksBitmap.value = socksBmp
+                _albedoBitmap.value = activeBmp
                 _previewMockupBitmap.value = mockup
             }
         }

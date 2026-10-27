@@ -345,16 +345,22 @@ export function createKit3DEngine(
   const camera = new THREE.PerspectiveCamera(38, initialW / initialH, 0.1, 50);
   camera.position.set(0, 0.25, 4.6);
 
+  renderer.domElement.style.touchAction = 'none';
+  renderer.domElement.style.pointerEvents = 'auto';
+
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.05, 0);
   controls.enableDamping = true;
   controls.dampingFactor = 0.07;
+  controls.rotateSpeed = 0.85;
+  controls.enableZoom = true;
+  controls.zoomSpeed = 1.0;
   controls.enablePan = false;
-  controls.minDistance = 2.4;
-  controls.maxDistance = 7.5;
+  controls.minDistance = 1.6;
+  controls.maxDistance = 8.0;
   // Constrained pitch as specified in SCR-EDITOR / FUN-PREVIEW-3D
-  controls.minPolarAngle = Math.PI * 0.22;
-  controls.maxPolarAngle = Math.PI * 0.75;
+  controls.minPolarAngle = Math.PI * 0.15;
+  controls.maxPolarAngle = Math.PI * 0.80;
   controls.update();
 
   // Dynamic 2048x2048 CanvasTextures for Jersey, Shorts, and Socks
@@ -440,17 +446,29 @@ export function createKit3DEngine(
   let currentMannequinVisible = true;
 
   function applyGarmentVisibility() {
-    if (jerseyNode) {
-      jerseyNode.visible = currentGarmentMode === 'JERSEY' || currentGarmentMode === 'ALL';
+    const showJersey = currentGarmentMode === 'JERSEY' || currentGarmentMode === 'ALL';
+    const showShorts = currentGarmentMode === 'SHORTS' || currentGarmentMode === 'ALL';
+    const showSocks = currentGarmentMode === 'SOCKS' || currentGarmentMode === 'ALL';
+    const showMannequin = currentMannequinVisible;
+
+    if (fullKitRoot) {
+      fullKitRoot.traverse((child) => {
+        const name = (child.name || '').toLowerCase();
+        const parentName = (child.parent?.name || '').toLowerCase();
+        if (name === 'jersey' || parentName === 'jersey' || name.startsWith('jersey_')) {
+          child.visible = showJersey;
+        } else if (name === 'shorts' || parentName === 'shorts' || name.startsWith('shorts_')) {
+          child.visible = showShorts;
+        } else if (name === 'socks' || parentName === 'socks' || name.startsWith('socks_')) {
+          child.visible = showSocks;
+        } else if (name === 'mannequin' || parentName === 'mannequin' || name.startsWith('mannequin_')) {
+          child.visible = showMannequin;
+        }
+      });
     }
-    if (shortsNode) {
-      shortsNode.visible = currentGarmentMode === 'SHORTS' || currentGarmentMode === 'ALL';
-    }
-    if (socksNode) {
-      socksNode.visible = currentGarmentMode === 'SOCKS' || currentGarmentMode === 'ALL';
-    }
-    if (mannequinNode) {
-      mannequinNode.visible = currentMannequinVisible;
+
+    if (!fullKitRoot) {
+      jerseyGroup.visible = showJersey;
     }
   }
 
@@ -642,6 +660,10 @@ export function createKit3DEngine(
       if (!fullKitRoot) {
         jerseyGroup.visible = mode === 'JERSEY' || mode === 'ALL';
       }
+      // Re-frame camera target Y on the active garment
+      const targetY = mode === 'JERSEY' ? 0.65 : mode === 'SHORTS' ? -0.05 : mode === 'SOCKS' ? -0.85 : 0.05;
+      controls.target.set(0, targetY, 0);
+      controls.update();
     },
     setLightingPreset(preset: LightingPreset) {
       applyLightingPreset(preset);

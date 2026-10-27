@@ -1,4 +1,4 @@
-// Implements: SCR-EDITOR / FUN-PREVIEW-3D
+// Implements: SCR-EDITOR / FUN-PREVIEW-3D / FUN-EDIT-SHORTS / FUN-EDIT-SOCKS / FUN-MANNEQUIN-TOGGLE
 package com.openkitmaker.android.render
 
 import android.graphics.Bitmap
@@ -10,16 +10,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import com.google.android.filament.EntityManager
 import com.google.android.filament.LightManager
 import com.google.android.filament.Texture
 import com.openkitmaker.android.domain.LightingMode
+import com.openkitmaker.android.ui.editor.GarmentSelection
 import io.github.sceneview.Scene
 import io.github.sceneview.math.Position
 import io.github.sceneview.node.ModelNode
@@ -33,19 +32,22 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * SOSTITUZIONE TOTALE PRIORITÀ #1:
- * Rimuove completamente il vecchio renderer software basato su Canvas.drawPath / Gouraud (< 20 FPS)
- * e implementa il rendering 3D PBR hardware-accelerated tramite Google Filament / SceneView.
+ * Renderer 3D PBR hardware-accelerated tramite Google Filament / SceneView.
  *
- * Vincoli rispettati:
- * - 60 FPS stabili (frame time <= 16,6 ms, target 12 ms)
- * - Zero allocazioni JNI nel loop di rendering: matrice FloatArray(16) pre-allocata e cachata
- * - Camera orbitale con pitch vincolato [-35°, +45°]
- * - Toggle illuminazione Studio (6500K, 1.2x) / Stadio (5400K, 1.8x)
+ * Supporta:
+ * - 60 FPS stabili
+ * - Camera orbitale 360° con pitch vincolato [-35°, +45°]
+ * - Multi-Mesh: isolamento automatico dei nodi Jersey, Shorts, Socks in base al capo attivo
+ * - Toggle visibilità Manichino
+ * - PBR Sportswear: roughness 0.8, metalness 0.0, normal map procedurale micro-weave
  */
 @Composable
 fun Kit3DRenderer(
     albedoBitmap: Bitmap?,
+    jerseyBitmap: Bitmap? = albedoBitmap,
+    shortsBitmap: Bitmap? = null,
+    socksBitmap: Bitmap? = null,
+    selectedGarment: GarmentSelection = GarmentSelection.ALL,
     lightingMode: LightingMode,
     roughness: Float,
     metalness: Float,
@@ -60,12 +62,15 @@ fun Kit3DRenderer(
     val modelLoader = rememberModelLoader(engine)
     val environmentLoader = rememberEnvironmentLoader(engine)
 
-    // Pre-allocazione statica della matrice di trasformazione 4x4 per zero allocazioni JNI per-frame
+    // Pre-allocazione statica della matrice di trasformazione 4x4
     val cachedTransformMatrix = remember {
         FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
     }
 
-    var currentAlbedoTexture by remember { mutableStateOf<Texture?>(null) }
+    var currentJerseyTexture by remember { mutableStateOf<Texture?>(null) }
+    var currentShortsTexture by remember { mutableStateOf<Texture?>(null) }
+    var currentSocksTexture by remember { mutableStateOf<Texture?>(null) }
+
     val fabricNormalTexture = remember(engine) {
         MaterialFactory.createProceduralFabricNormalTexture(engine)
     }
@@ -105,22 +110,34 @@ fun Kit3DRenderer(
         }
     }
 
-    // Aggiornamento reattivo della texture 2048x2048 su GPU Filament e visibilità nodi
-    LaunchedEffect(albedoBitmap, roughness, metalness, showMannequin) {
-        val bmp = albedoBitmap ?: return@LaunchedEffect
-        val tex = MaterialFactory.createOrUpdateAlbedoTexture(engine, currentAlbedoTexture, bmp)
-        currentAlbedoTexture = tex
+    // Aggiornamento reattivo delle texture 2048x2048 su GPU Filament e visibilità multi-mesh
+    LaunchedEffect(
+        jerseyBitmap,
+        shortsBitmap,
+        socksBitmap,
+        albedoBitmap,
+        roughness,
+        metalness,
+        showMannequin,
+        selectedGarment
+    ) {
+        val jBmp = jerseyBitmap ?: albedoBitmap
+        if (jBmp != null) {
+            currentJerseyTexture = MaterialFactory.createOrUpdateAlbedoTexture(engine, currentJerseyTexture, jBmp)
+        }
+        if (shortsBitmap != null) {
+            currentShortsTexture = MaterialFactory.createOrUpdateAlbedoTexture(engine, currentShortsTexture, shortsBitmap)
+        }
+        if (socksBitmap != null) {
+            currentSocksTexture = MaterialFactory.createOrUpdateAlbedoTexture(engine, currentSocksTexture, socksBitmap)
+        }
+
+        val isJerseyVisible = selectedGarment == GarmentSelection.JERSEY || selectedGarment == GarmentSelection.ALL
+        val isShortsVisible = selectedGarment == GarmentSelection.SHORTS || selectedGarment == GarmentSelection.ALL
+        val isSocksVisible = selectedGarment == GarmentSelection.SOCKS || selectedGarment == GarmentSelection.ALL
+        val isMannequinVisible = showMannequin
 
         childNodes.filterIsInstance<ModelNode>().forEach { node ->
-            node.materialInstances.flatten().forEach { matInstance ->
-                MaterialFactory.applyKitPbrParameters(
-                    materialInstance = matInstance,
-                    albedoTexture = tex,
-                    normalTexture = fabricNormalTexture,
-                    roughness = roughness.coerceAtLeast(0.75f),
-                    metalness = metalness.coerceAtMost(0.05f)
-                )
-            }
             node.modelInstance?.entities?.forEach { entity ->
                 val rm = engine.renderableManager
                 val ri = rm.getInstance(entity)
@@ -129,17 +146,31 @@ fun Kit3DRenderer(
                     for (p in 0 until count) {
                         val mi = rm.getMaterialInstanceAt(ri, p)
                         val name = runCatching { mi.name.lowercase() }.getOrDefault("")
-                        if (name.contains("mannequin")) {
-                            // Toggle visibilità del manichino tramite layer mask
-                            rm.setLayerMask(ri, 0xFF, if (showMannequin) 0xFF else 0x00)
-                        } else {
-                            MaterialFactory.applyKitPbrParameters(
-                                materialInstance = mi,
-                                albedoTexture = tex,
-                                normalTexture = fabricNormalTexture,
-                                roughness = roughness.coerceAtLeast(0.75f),
-                                metalness = metalness.coerceAtMost(0.05f)
-                            )
+
+                        val isVisible = when {
+                            name.contains("jersey") -> isJerseyVisible
+                            name.contains("shorts") -> isShortsVisible
+                            name.contains("socks") -> isSocksVisible
+                            name.contains("mannequin") -> isMannequinVisible
+                            else -> true
+                        }
+                        rm.setLayerMask(ri, 0xFF, if (isVisible) 0xFF else 0x00)
+
+                        if (isVisible && !name.contains("mannequin")) {
+                            val activeTex = when {
+                                name.contains("shorts") -> currentShortsTexture ?: currentJerseyTexture
+                                name.contains("socks") -> currentSocksTexture ?: currentJerseyTexture
+                                else -> currentJerseyTexture
+                            }
+                            if (activeTex != null) {
+                                MaterialFactory.applyKitPbrParameters(
+                                    materialInstance = mi,
+                                    albedoTexture = activeTex,
+                                    normalTexture = fabricNormalTexture,
+                                    roughness = roughness.coerceAtLeast(0.75f),
+                                    metalness = metalness.coerceAtMost(0.05f)
+                                )
+                            }
                         }
                     }
                 }
@@ -152,26 +183,32 @@ fun Kit3DRenderer(
         mainLightNode.intensity = lightingMode.intensityMultiplier * 95_000f
     }
 
-    // Aggiornamento camera orbitale con pitch vincolato [-35°, +45°] e matrice pre-allocata
-    LaunchedEffect(yawDegrees, pitchDegrees, zoomLevel) {
+    // Aggiornamento camera orbitale con pitch vincolato [-35°, +45°] e centratura dinamica sul capo attivo
+    LaunchedEffect(yawDegrees, pitchDegrees, zoomLevel, selectedGarment) {
         val clampedPitch = pitchDegrees.coerceIn(MIN_ORBIT_PITCH_DEG, MAX_ORBIT_PITCH_DEG)
         val clampedZoom = zoomLevel.coerceIn(0.65f, 2.25f)
         val radius = 2.65f / clampedZoom
+
+        val targetY = when (selectedGarment) {
+            GarmentSelection.JERSEY -> 0.40f
+            GarmentSelection.SHORTS -> -0.10f
+            GarmentSelection.SOCKS -> -0.65f
+            GarmentSelection.ALL -> 0.05f
+        }
 
         val yawRad = Math.toRadians(yawDegrees.toDouble())
         val pitchRad = Math.toRadians(clampedPitch.toDouble())
 
         val camX = (radius * cos(pitchRad) * sin(yawRad)).toFloat()
-        val camY = (radius * sin(pitchRad)).toFloat()
+        val camY = targetY + (radius * sin(pitchRad)).toFloat()
         val camZ = (radius * cos(pitchRad) * cos(yawRad)).toFloat()
 
         // Aggiorna posizione della camera orbitale
         cameraNode.position = Position(camX, camY, camZ)
-        cameraNode.lookAt(Position(0f, 0f, 0f))
+        cameraNode.lookAt(Position(0f, targetY, 0f))
 
-        // Mantiene il modello perfettamente centrato e visibile mantenendo la scala corretta nella matrice pre-allocata
+        // Mantiene la scala proporzionata
         Matrix.setIdentityM(cachedTransformMatrix, 0)
-        Matrix.translateM(cachedTransformMatrix, 0, 0f, 0f, 0f)
         Matrix.scaleM(cachedTransformMatrix, 0, 1.55f, 1.55f, 1.55f)
         val tm = engine.transformManager
         childNodes.firstOrNull()?.let { node ->
@@ -184,20 +221,14 @@ fun Kit3DRenderer(
 
     DisposableEffect(engine) {
         onDispose {
-            currentAlbedoTexture?.let { engine.destroyTexture(it) }
+            currentJerseyTexture?.let { engine.destroyTexture(it) }
+            currentShortsTexture?.let { engine.destroyTexture(it) }
+            currentSocksTexture?.let { engine.destroyTexture(it) }
             engine.destroyTexture(fabricNormalTexture)
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    onOrbitChange(pan.x * 0.35f, -pan.y * 0.25f, zoom)
-                }
-            }
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         Scene(
             modifier = Modifier.fillMaxSize(),
             engine = engine,
@@ -206,6 +237,17 @@ fun Kit3DRenderer(
             mainLightNode = mainLightNode,
             childNodes = childNodes,
             isOpaque = true
+        )
+
+        // Overlay trasparente sopra la SceneView per intercettare stabilmente i gesti touch di rotazione orbitale
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        onOrbitChange(pan.x * 0.40f, -pan.y * 0.30f, zoom)
+                    }
+                }
         )
     }
 }
