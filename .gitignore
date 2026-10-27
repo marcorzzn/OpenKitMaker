@@ -36,12 +36,16 @@ dist-ssr/
 04_baseline_native/
 99_archive/
 scratch/
+release-assets/
+patch-apk/
 *.tmp
 *.bak
 
 # Large binary audit artifacts
 00_audit/*.zip
 *source.glb*
+*.glb.glb
+*realistic*
 
 # OS Generated
 .DS_Store

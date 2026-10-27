@@ -95,8 +95,6 @@ fun Kit3DRenderer(
     val childNodes = rememberNodes {
         val modelInstance = runCatching {
             modelLoader.createModelInstance(assetFileLocation = "models/kit_full_outfit_clean.glb")
-        }.getOrNull() ?: runCatching {
-            modelLoader.createModelInstance(assetFileLocation = "models/kit_jersey_pbr.glb")
         }.getOrNull()
 
         if (modelInstance != null) {
