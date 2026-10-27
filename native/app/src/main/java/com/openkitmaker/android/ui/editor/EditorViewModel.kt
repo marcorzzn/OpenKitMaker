@@ -128,7 +128,7 @@ class EditorViewModel @Inject constructor(
                 GarmentSelection.JERSEY -> TextureEngine.renderJerseyMockupBitmap(currentKit, jerseyBmp, 1024, 1024)
                 GarmentSelection.SHORTS -> TextureEngine.renderShortsMockupBitmap(currentKit, shortsBmp, 1024, 1024)
                 GarmentSelection.SOCKS -> TextureEngine.renderSocksMockupBitmap(currentKit, socksBmp, 1024, 1024)
-                GarmentSelection.ALL -> TextureEngine.renderFullKitMockupBitmap(currentKit, jerseyBmp, shortsBmp, socksBmp, 1024, 1024)
+                GarmentSelection.ALL -> TextureEngine.renderFullKitMockupBitmap(currentKit, 1024, 1024)
             }
 
             withContext(Dispatchers.Main) {
