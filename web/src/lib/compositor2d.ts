@@ -11,6 +11,7 @@ import type {
   Garment,
   GarmentType,
 } from '../types/kit';
+import { ensureKitGarments } from '../data/templates';
 
 export const TEXTURE_SIZE = 2048;
 export const PREVIEW_SIZE = 512;
@@ -826,11 +827,21 @@ function renderDecalCrest(
   ctx.restore();
 }
 
+function extractGarment(input: Garment | Kit, fallbackType: GarmentType): Garment {
+  if ('type' in input && 'layers' in input) {
+    return input as Garment;
+  }
+  const kit = input as Kit;
+  const safeGarments = ensureKitGarments(kit);
+  return safeGarments[fallbackType.toLowerCase() as 'jersey' | 'shorts' | 'socks'];
+}
+
 export function compositeJersey2048(
   targetCanvas: HTMLCanvasElement | OffscreenCanvas,
-  garment: Garment,
+  garmentOrKit: Garment | Kit,
   options: { finishType?: string; showUvGuides?: boolean } = {}
 ): void {
+  const garment = extractGarment(garmentOrKit, 'JERSEY');
   if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
     targetCanvas.width = TEXTURE_SIZE;
     targetCanvas.height = TEXTURE_SIZE;
@@ -870,9 +881,10 @@ export function compositeJersey2048(
 
 export function compositeShorts2048(
   targetCanvas: HTMLCanvasElement | OffscreenCanvas,
-  garment: Garment,
+  garmentOrKit: Garment | Kit,
   options: { finishType?: string; showUvGuides?: boolean } = {}
 ): void {
+  const garment = extractGarment(garmentOrKit, 'SHORTS');
   if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
     targetCanvas.width = TEXTURE_SIZE;
     targetCanvas.height = TEXTURE_SIZE;
@@ -938,9 +950,10 @@ export function compositeShorts2048(
 
 export function compositeSocks2048(
   targetCanvas: HTMLCanvasElement | OffscreenCanvas,
-  garment: Garment,
+  garmentOrKit: Garment | Kit,
   options: { finishType?: string; showUvGuides?: boolean } = {}
 ): void {
+  const garment = extractGarment(garmentOrKit, 'SOCKS');
   if (targetCanvas.width !== TEXTURE_SIZE || targetCanvas.height !== TEXTURE_SIZE) {
     targetCanvas.width = TEXTURE_SIZE;
     targetCanvas.height = TEXTURE_SIZE;
@@ -1015,19 +1028,35 @@ export function compositeSocks2048(
 
 export function compositeGarment2048(
   targetCanvas: HTMLCanvasElement | OffscreenCanvas,
-  garment: Garment,
-  options: { finishType?: string; showUvGuides?: boolean } = {}
+  garmentOrKit: Garment | Kit,
+  garmentTypeOrOptions?: GarmentType | { finishType?: string; showUvGuides?: boolean },
+  maybeOptions?: { finishType?: string; showUvGuides?: boolean }
 ): void {
-  switch (garment.type) {
+  let gType: GarmentType = 'JERSEY';
+  let options: { finishType?: string; showUvGuides?: boolean } = {};
+
+  if (typeof garmentTypeOrOptions === 'string') {
+    gType = garmentTypeOrOptions as GarmentType;
+    options = maybeOptions || {};
+  } else if (garmentTypeOrOptions && typeof garmentTypeOrOptions === 'object') {
+    options = garmentTypeOrOptions;
+    if ('type' in garmentOrKit) {
+      gType = (garmentOrKit as Garment).type;
+    }
+  } else if ('type' in garmentOrKit) {
+    gType = (garmentOrKit as Garment).type;
+  }
+
+  switch (gType) {
     case 'SHORTS':
-      compositeShorts2048(targetCanvas, garment, options);
+      compositeShorts2048(targetCanvas, garmentOrKit, options);
       break;
     case 'SOCKS':
-      compositeSocks2048(targetCanvas, garment, options);
+      compositeSocks2048(targetCanvas, garmentOrKit, options);
       break;
     case 'JERSEY':
     default:
-      compositeJersey2048(targetCanvas, garment, options);
+      compositeJersey2048(targetCanvas, garmentOrKit, options);
       break;
   }
 }
@@ -1382,17 +1411,54 @@ export function renderSocksMockup512(
 
 export function renderFullKitMockup512(
   previewCanvas: HTMLCanvasElement,
-  textures: {
-    jersey: HTMLCanvasElement | OffscreenCanvas;
-    shorts: HTMLCanvasElement | OffscreenCanvas;
-    socks: HTMLCanvasElement | OffscreenCanvas;
-  },
-  kit: Kit
+  texturesOrKit:
+    | {
+        jersey: HTMLCanvasElement | OffscreenCanvas;
+        shorts: HTMLCanvasElement | OffscreenCanvas;
+        socks: HTMLCanvasElement | OffscreenCanvas;
+      }
+    | Kit,
+  maybeKit?: Kit
 ): string {
   previewCanvas.width = PREVIEW_SIZE;
   previewCanvas.height = PREVIEW_SIZE;
   const ctx = previewCanvas.getContext('2d');
   if (!ctx) return '';
+
+  let textures: {
+    jersey: HTMLCanvasElement | OffscreenCanvas;
+    shorts: HTMLCanvasElement | OffscreenCanvas;
+    socks: HTMLCanvasElement | OffscreenCanvas;
+  };
+  let kit: Kit;
+
+  if ('id' in texturesOrKit && 'layers' in texturesOrKit) {
+    kit = texturesOrKit as Kit;
+    const safeGarments = ensureKitGarments(kit);
+    const jCanv = document.createElement('canvas');
+    jCanv.width = TEXTURE_SIZE;
+    jCanv.height = TEXTURE_SIZE;
+    compositeJersey2048(jCanv, safeGarments.jersey);
+
+    const shCanv = document.createElement('canvas');
+    shCanv.width = TEXTURE_SIZE;
+    shCanv.height = TEXTURE_SIZE;
+    compositeShorts2048(shCanv, safeGarments.shorts);
+
+    const soCanv = document.createElement('canvas');
+    soCanv.width = TEXTURE_SIZE;
+    soCanv.height = TEXTURE_SIZE;
+    compositeSocks2048(soCanv, safeGarments.socks);
+
+    textures = { jersey: jCanv, shorts: shCanv, socks: soCanv };
+  } else {
+    textures = texturesOrKit as {
+      jersey: HTMLCanvasElement | OffscreenCanvas;
+      shorts: HTMLCanvasElement | OffscreenCanvas;
+      socks: HTMLCanvasElement | OffscreenCanvas;
+    };
+    kit = maybeKit!;
+  }
 
   drawStudioBackdrop(ctx);
   drawSingleSockOnCanvas(ctx, textures.socks, 215, 385, 0.58, false);

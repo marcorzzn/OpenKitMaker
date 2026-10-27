@@ -2,13 +2,11 @@
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import type { Kit, KitManifestV1, GarmentType } from '../types/kit';
 import {
-  compositeKit2048,
   compositeJersey2048,
   compositeShorts2048,
   compositeSocks2048,
   compositeGarment2048,
   renderFullKitMockup512,
-  renderMinikitPreview512,
   TEXTURE_SIZE,
 } from './compositor2d';
 import { generateUuidV4, ensureKitGarments } from '../data/templates';

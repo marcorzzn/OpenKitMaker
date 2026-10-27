@@ -9,7 +9,6 @@
   } from '../lib/compositor2d';
   import {
     exportGarmentPng2048,
-    exportKitPng2048,
     exportKitInteroperableZip,
     importKitFromZip,
   } from '../lib/exporter';

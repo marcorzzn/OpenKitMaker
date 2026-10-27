@@ -56,7 +56,7 @@
 
   let componentRailItems = $derived(
     studio.activeGarmentType !== 'ALL'
-      ? allRailItems.filter((item) => garmentAllowedTypes[studio.activeGarmentType].includes(item.type))
+      ? allRailItems.filter((item) => garmentAllowedTypes[studio.activeGarmentType as GarmentType].includes(item.type))
       : allRailItems
   );
 

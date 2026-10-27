@@ -41,10 +41,42 @@ Documento di audit globale e verifica di parità cross-platform (**Web vs. Andro
 
 ---
 
-## 3. Esito della Verifica
+## 3. Esito della Verifica di Parità
 
 Tutti i controlli incrociati della **Fase 2** sono stati superati con successo:
 1. Il Design System è formalizzato in Kotlin (`native/app/src/main/java/com/openkitmaker/android/ui/theme/`) e allineato in CSS (`web/src/index.css`) secondo `tokens.json`.
 2. I file ZIP generati da Web e Android presentano gli stessi file, gli stessi nomi e lo stesso schema `manifest.json`.
 3. L'Editor UI presenta identico ordine, icone emoji e testi dei tab (`👕 Maglia`, `🩳 Pantaloncini`, `🧦 Calzettoni`, `👤 Vista Completo`).
 4. L'azione di salvataggio fornisce il medesimo feedback all'utente su entrambe le piattaforme.
+
+---
+
+## 4. Fase 3: Code Cleanup, Linting e Rimozione dei Debug
+
+### Attività Svolte ed Elenco File Puliti
+
+1. **Rimozione dei Log di Debug e Rumore**:
+   - `web/src/lib/engine3d.ts`: Sostituito `console.warn` di debug con log strutturato `console.error('[OpenKitMaker][ERROR][ERR_3D_CONTEXT_LOST]...')` conforme alla specifica `error-handling.md`.
+   - Nessun `console.log` o `debugger` residuo presente nel codice applicativo Web (`web/src/`).
+   - Nessun `println()` o `Log.d/v/i()` residuo presente nel codice applicativo Android (`native/app/src/main/`).
+   - Script CLI `scripts/generate-procedural-kit.mjs`: Mantenuti esclusivamente i log essenziali di avanzamento CLI.
+
+2. **Rimozione di Codice Morto (Dead Code) e Funzioni Obsolete**:
+   - `native/app/src/main/java/com/openkitmaker/android/render/TextureEngine.kt`: Rimossa la funzione legacy `compositeKitBitmap(...)`, residuo del vecchio modello monolitico a capo singolo v1.0. Ora l'intero motore si basa su `compositeGarmentBitmap(...)` e le varianti specifiche per capo.
+
+3. **Pulizia degli Import Non Utilizzati**:
+   - `native/app/src/main/java/com/openkitmaker/android/MainActivity.kt`: Rimossi gli import orfani `androidx.compose.material3.darkColorScheme` e `androidx.compose.ui.graphics.Color`.
+   - `web/src/lib/exporter.ts`: Rimossi gli import orfani `compositeKit2048` e `renderMinikitPreview512`.
+   - `web/src/components/ScreenExport.svelte`: Rimosso l'import non utilizzato `exportKitPng2048`.
+
+4. **Risoluzione Errori di Tipo TypeScript & Robustezza Polimorfica**:
+   - `web/src/lib/compositor2d.ts`:
+     - Le funzioni `compositeJersey2048`, `compositeShorts2048`, `compositeSocks2048` e `compositeGarment2048` sono state rese polimorfiche per accettare indistintamente sia entità `Garment` che `Kit` completo tramite la funzione di estrazione interna `extractGarment()`.
+     - `renderFullKitMockup512(...)` ora supporta in overloading sia la chiamata con oggetto texture che il passaggio diretto dell'entità `Kit`.
+   - `web/src/components/ScreenEditor.svelte`: Tipizzato correttamente l'accesso dinamico alle configurazioni con `studio.activeGarmentType as GarmentType`.
+
+5. **Verifica Statica e Conformità Build**:
+   - Web: `npm run lint` (`tsc --noEmit`) → **0 errori**.
+   - Web: `npm run build` (`vite build`) → **0 errori**, bundle generato in 14s.
+   - Codebase 100% privo di commenti `// TODO` e `// FIXME` non risolti.
+

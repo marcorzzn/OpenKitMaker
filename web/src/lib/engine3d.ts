@@ -517,7 +517,7 @@ export function createKit3DEngine(
     },
     undefined,
     (err) => {
-      console.warn('Fallback: procedurale attivo, caricamento GLB:', err);
+      console.error('[OpenKitMaker][ERROR][ERR_3D_CONTEXT_LOST] Caricamento GLB fallito, fallback procedurale attivo:', err);
     }
   );
 

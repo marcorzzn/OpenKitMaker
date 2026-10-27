@@ -35,14 +35,6 @@ object TextureEngine {
     const val FULL_RESOLUTION = 2048
     const val PREVIEW_RESOLUTION = 512
 
-    fun compositeKitBitmap(
-        kit: Kit,
-        width: Int = FULL_RESOLUTION,
-        height: Int = FULL_RESOLUTION
-    ): Bitmap {
-        return compositeJerseyBitmap(kit, width, height)
-    }
-
     fun compositeJerseyBitmap(
         kit: Kit,
         width: Int = FULL_RESOLUTION,
