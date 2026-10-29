@@ -246,6 +246,97 @@ export async function exportKitPng2048(
 }
 
 /**
+ * 1-Click Social & WhatsApp 1080x1080 Showcase Image.
+ * High-impact square image formatted for Instagram, WhatsApp groups, Telegram, and Twitter.
+ */
+export async function exportSocialMockup1080(
+  kit: Kit,
+  onProgress?: (pct: number) => void
+): Promise<{ bytes: Uint8Array; filename: string }> {
+  onProgress?.(15);
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext('2d')!;
+
+  // 1. Sleek Sportswear Studio Backdrop
+  const bgGrad = ctx.createRadialGradient(540, 480, 80, 540, 540, 750);
+  bgGrad.addColorStop(0, '#222F44');
+  bgGrad.addColorStop(0.65, '#131B26');
+  bgGrad.addColorStop(1, '#090D14');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  // Soft stadium turf / ground line at bottom
+  ctx.fillStyle = 'rgba(0, 196, 159, 0.08)';
+  ctx.beginPath();
+  ctx.ellipse(540, 960, 440, 60, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Subtle contact shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(540, 930, 320, 36, 0, 0, Math.PI * 2);
+  ctx.fill();
+  onProgress?.(40);
+
+  // 2. Render Full Kit Mockup at 512, then upscale to 780x780 centered
+  const mockupCanvas = document.createElement('canvas');
+  mockupCanvas.width = 512;
+  mockupCanvas.height = 512;
+  renderFullKitMockup512(mockupCanvas, kit);
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(mockupCanvas, 150, 150, 780, 780);
+  onProgress?.(70);
+
+  // 3. Brand & Typography Header
+  ctx.fillStyle = '#00C49F';
+  ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText('⚡ OPENKITMAKER PRO', 60, 80);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText(kit.name.toUpperCase(), 60, 134);
+
+  ctx.fillStyle = '#94A3B8';
+  ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const categoryLabel = kit.category === 'HOME' ? 'Prima Divisa (Casa)' : kit.category === 'AWAY' ? 'Seconda Divisa (Trasferta)' : 'Divisa Ufficiale';
+  ctx.fillText(`${categoryLabel} · Stagione 2026/27`, 60, 168);
+
+  // 4. Fabric Badge Bottom-Right
+  const fabricName = kit.metadata?.fabricType || 'Mesh';
+  const badgeText = `🎽 Tessuto: ${fabricName}`;
+  ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const textWidth = ctx.measureText(badgeText).width;
+  const badgeX = 1080 - textWidth - 90;
+  const badgeY = 1010;
+
+  ctx.fillStyle = '#141B26';
+  ctx.strokeStyle = '#2E3D56';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(badgeX, badgeY - 30, textWidth + 30, 42, 12);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#38BDF8';
+  ctx.fillText(badgeText, badgeX + 15, badgeY - 3);
+
+  onProgress?.(90);
+
+  const pngBytes = await canvasToUint8ArrayPng(canvas);
+  const safeSlug = kit.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const filename = `social_${safeSlug || kit.id.slice(0, 8)}_1080x1080.png`;
+  const blob = new Blob([pngBytes as unknown as BlobPart], { type: 'image/png' });
+  triggerBlobDownload(blob, filename);
+  onProgress?.(100);
+
+  return { bytes: pngBytes, filename };
+}
+
+/**
  * FUN-EXPORT-ZIP & TEST-PAR-05: Generates interoperable kit_<id>.zip containing:
  * - jersey.png (2048x2048 RGBA lossless)
  * - shorts.png (2048x2048 RGBA lossless)

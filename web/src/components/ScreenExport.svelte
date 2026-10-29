@@ -9,6 +9,7 @@
   } from '../lib/compositor2d';
   import {
     exportGarmentPng,
+    exportSocialMockup1080,
     exportKitInteroperableZip,
     exportKitPbrBundleZip,
     exportKitGlb,
@@ -70,6 +71,33 @@
       studio.notify(
         'success',
         `Texture PNG ${selectedResolution}×${selectedResolution} (${garmentType}) esportata con successo.`
+      );
+    } catch {
+      studio.notify('error', i18n.errors.export_failed);
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  async function handleExportSocial() {
+    if (isExporting) return;
+    isExporting = true;
+    exportProgress = 15;
+    try {
+      const { bytes, filename } = await exportSocialMockup1080(
+        studio.activeKit,
+        (pct) => {
+          exportProgress = pct;
+        }
+      );
+      lastExportSummary = {
+        type: 'PNG',
+        filename,
+        sizeKb: Math.round(bytes.byteLength / 1024),
+      };
+      studio.notify(
+        'success',
+        'Immagine Social 1080×1080 scaricata con successo! Pronta da condividere su WhatsApp e Instagram.'
       );
     } catch {
       studio.notify('error', i18n.errors.export_failed);
@@ -194,15 +222,14 @@
   <!-- Header (SCR-EXPORT) -->
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#2E3D56] pb-6">
     <div class="space-y-1.5">
-      <div class="text-xs text-[#94A3B8] font-mono-tabular">
-        SCR-EXPORT · 2D 2K/4K · PBR BUNDLE · 3D GLB · UNIVERSAL EXPORT
+      <div class="text-xs text-[#00C49F] font-mono-tabular">
+        ⚡ ESPORTAZIONE UNIVERSALE & CONDIVISIONE
       </div>
       <h1 class="text-3xl sm:text-4xl font-bold font-display tracking-wide text-white">
         {i18n.export.title}
       </h1>
       <p class="text-sm text-[#94A3B8]">
         Kit attivo: <span class="text-white font-semibold">{studio.activeKit.name}</span>
-        <span class="font-mono-tabular text-xs text-[#64748B]">({studio.activeKit.id})</span>
         <span class="ml-2 px-2 py-0.5 rounded-full bg-[#1A2230] text-[#00C49F] text-xs font-mono-tabular border border-[#2E3D56]">
           Tessuto: {studio.fabricType}
         </span>
@@ -222,7 +249,7 @@
         onclick={() => zipFileInput?.click()}
         class="px-4 py-2 text-xs font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-lg cursor-pointer whitespace-nowrap"
       >
-        Verifica / Importa ZIP (TEST-PAR-06)
+        📥 Importa File .ZIP
       </button>
       <input
         bind:this={zipFileInput}
@@ -323,6 +350,31 @@
       </div>
     </div>
   {/if}
+
+  <!-- 1-Click Social & WhatsApp Showcase Banner (Hero Action) -->
+  <div class="bg-gradient-to-r from-[#0F52BA]/25 via-[#1A2230] to-[#00C49F]/20 border-2 border-[#00C49F]/50 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl shadow-[#00C49F]/10">
+    <div class="space-y-2">
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#0F141C] text-[#00C49F] text-xs font-mono-tabular border border-[#00C49F]/40 font-semibold">
+        <span>📱</span> CONDIVISIONE ISTANTANEA
+      </div>
+      <h2 class="text-2xl font-bold font-display text-white">
+        Scarica Immagine per WhatsApp & Social (1080×1080 HD)
+      </h2>
+      <p class="text-sm text-[#94A3B8] max-w-2xl leading-relaxed">
+        Genera in un istante una grafica quadrata ad alta risoluzione con la divisa completa (Maglia + Pantaloncini + Calzettoni), sfondo da stadio e dettagli del kit. Perfetta da inviare nelle chat di squadra o pubblicare su Instagram e TikTok.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      disabled={isExporting}
+      onclick={handleExportSocial}
+      class="px-6 py-4 rounded-xl bg-gradient-to-r from-[#00C49F] to-[#10B981] hover:from-[#10B981] hover:to-[#059669] text-[#0F141C] font-extrabold text-sm sm:text-base transition-all shadow-lg shadow-[#00C49F]/30 hover:scale-102 cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-2"
+    >
+      <span>📲</span>
+      <span>Scarica per WhatsApp & Social</span>
+    </button>
+  </div>
 
   <!-- Universal Export Grid: 4 Formati Professionali (STEP 4) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

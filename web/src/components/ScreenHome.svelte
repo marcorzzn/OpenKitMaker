@@ -34,7 +34,7 @@
       studio.openSavedKit(kit, 'SCR-EDITOR');
       studio.notify(
         'success',
-        `Kit "${kit.name}" importato da ZIP (${checksumVerified ? 'SHA-256 verificato' : 'manifest v1.0.0'}).`
+        `Kit "${kit.name}" caricato con successo!`
       );
     } catch (err: any) {
       studio.notify('error', err?.message || i18n.errors.import_failed);
@@ -45,57 +45,55 @@
 </script>
 
 <section class="max-w-7xl mx-auto px-6 py-10 space-y-12">
-  <!-- Hero Dashboard Banner (SCR-HOME) -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch bg-[#1A2230] border border-[#2E3D56] rounded-2xl p-8">
-    <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
-      <div class="space-y-3">
-        <div class="flex items-center gap-2 text-xs text-[#94A3B8] font-mono-tabular">
-          <span>OpenKitMaker-Web v1.0.0</span>
-          <span aria-hidden="true">·</span>
-          <span>Target A+B (Svelte 5 + Three.js + PWA)</span>
-          <span aria-hidden="true">·</span>
-          <span class={studio.isOnline ? 'text-[#00C49F]' : 'text-[#F59E0B]'}>
-            {studio.isOnline ? 'Stato: Connesso (Cache Offline Attiva)' : i18n.app.offline_badge}
-          </span>
+  <!-- Hero Banner -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch bg-gradient-to-br from-[#1A2230] to-[#121824] border border-[#2E3D56] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+    <!-- Background Glow Effect -->
+    <div class="absolute -top-32 -right-32 w-96 h-96 bg-[#0F52BA]/15 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-[#00C49F]/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="lg:col-span-7 flex flex-col justify-between space-y-6 relative z-10">
+      <div class="space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0F141C] border border-[#2E3D56] text-xs font-mono-tabular">
+          <span class="text-[#00C49F] font-semibold">⚡ STUDIO 3D SPORTSWEAR</span>
+          <span class="text-[#64748B]">·</span>
+          <span class="text-[#94A3B8]">100% Gratuito & Senza Limiti</span>
         </div>
 
-        <h1 class="text-4xl sm:text-5xl font-bold font-display tracking-wide text-white leading-tight" style="text-wrap: balance;">
-          Studio Sartoriale 2D & 3D per Divise Sportive Interoperabili
+        <h1 class="text-4xl sm:text-5xl font-black font-display tracking-tight text-white leading-tight" style="text-wrap: balance;">
+          Progetta la Tua Divisa Perfetta in 3D Fotorealistico
         </h1>
 
         <p class="text-base text-[#94A3B8] max-w-2xl leading-relaxed">
-          Progetta texture tecniche a risoluzione nativa <span class="text-white font-mono-tabular">2048×2048 px</span>,
-          ispeziona il modello 3D con illuminazione PBR Studio/Stadio a 60 FPS e condividi pacchetti
-          <span class="text-white font-mono-tabular">kit_&lt;id&gt;.zip</span> compatibili al 100% con OpenKitMaker-Native Android.
+          Crea divise complete (maglia, pantaloncini, calzettoni) con pattern geometrici dinamici, stemmi magnetici e 4 tessuti tecnici reali: <strong class="text-white">Mesh traspirante</strong>, <strong class="text-white">Poliestere lucido</strong>, <strong class="text-white">Cotone '90</strong> e <strong class="text-white">Jacquard</strong>.
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-4 pt-2">
-        <!-- Main CTA required by SCR-HOME -->
+      <div class="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="button"
           onclick={() => studio.navigateTo('SCR-CATALOG')}
-          class="px-6 py-3 text-sm font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-sm"
+          class="px-6 py-3.5 text-sm font-bold text-white bg-gradient-to-r from-[#0F52BA] to-[#0D47A1] hover:from-[#1565C0] hover:to-[#0F52BA] rounded-xl transition-all shadow-lg shadow-[#0F52BA]/25 cursor-pointer flex items-center gap-2"
         >
-          {i18n.home.cta_new_kit}
+          <span>👕</span>
+          <span>Inizia da un Modello</span>
         </button>
 
-        <!-- Quick Access required by SCR-HOME -->
         <button
           type="button"
           onclick={() => studio.navigateTo('SCR-SAVED')}
-          class="px-5 py-3 text-sm font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          class="px-5 py-3.5 text-sm font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
         >
-          {i18n.home.cta_all_kits} ({studio.savedKits.length})
+          <span>📁</span>
+          <span>I Miei Progetti ({studio.savedKits.length})</span>
         </button>
 
-        <!-- Cross-platform ZIP import (TEST-PAR-06) -->
         <button
           type="button"
           onclick={() => fileInputRef?.click()}
-          class="px-5 py-3 text-sm font-medium text-[#94A3B8] hover:text-white bg-transparent hover:bg-[#253146] border border-[#2E3D56] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          class="px-5 py-3.5 text-sm font-medium text-[#94A3B8] hover:text-white bg-[#1A2230]/70 hover:bg-[#1A2230] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
         >
-          {i18n.home.cta_import_zip}
+          <span>📥</span>
+          <span>Importa .ZIP</span>
         </button>
         <input
           bind:this={fileInputRef}
@@ -107,124 +105,126 @@
       </div>
     </div>
 
-    <!-- Geometric Live Preview Showcase Card -->
-    <div class="lg:col-span-5 bg-[#0F141C] border border-[#2E3D56] rounded-xl p-6 flex flex-col justify-between">
+    <!-- Active Draft Showcase Card -->
+    <div class="lg:col-span-5 bg-[#0F141C]/90 backdrop-blur border border-[#2E3D56] rounded-2xl p-6 flex flex-col justify-between relative z-10 shadow-xl">
       <div class="flex items-center justify-between text-xs text-[#94A3B8]">
-        <span>Bozza Attiva nello Studio</span>
-        <span class="font-mono-tabular text-[#00C49F]">{studio.activeKit.category} · 2048×2048 RGBA</span>
+        <span class="flex items-center gap-1.5 font-semibold text-white">
+          <span class="w-2 h-2 rounded-full bg-[#00C49F]"></span> Progetto Attivo
+        </span>
+        <span class="px-2 py-0.5 rounded-full bg-[#1A2230] text-[#00C49F] font-mono-tabular border border-[#2E3D56]">
+          {studio.fabricType}
+        </span>
       </div>
 
-      <div class="my-4 flex items-center justify-center">
-        {#if studio.activeKit.metadata?.thumbnailDataUrl}
-          <img
-            src={studio.activeKit.metadata.thumbnailDataUrl}
-            alt="Anteprima minikit {studio.activeKit.name}"
-            class="w-56 h-56 object-contain rounded-lg"
-          />
-        {:else}
-          <svg viewBox="0 0 240 240" class="w-52 h-52">
-            <path
-              d="M72 42 L100 42 C108 56 132 56 140 42 L168 42 L208 76 L190 110 L166 94 L166 198 L74 198 L74 94 L50 110 L32 76 Z"
-              fill="#0F52BA"
-              stroke="#FFFFFF"
-              stroke-width="4"
+      <div class="my-5 flex flex-col items-center justify-center">
+        <div class="w-full aspect-[4/3] max-h-56 bg-[#141B26] border border-[#2E3D56] rounded-xl flex items-center justify-center p-3 overflow-hidden group">
+          {#if studio.activeKit.metadata?.thumbnailDataUrl}
+            <img
+              src={studio.activeKit.metadata.thumbnailDataUrl}
+              alt="Anteprima {studio.activeKit.name}"
+              class="w-full h-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform"
             />
-            <polygon points="88,62 112,62 158,190 134,190" fill="#00C49F" />
-          </svg>
-        {/if}
-      </div>
-
-      <div class="flex items-center justify-between pt-3 border-t border-[#2E3D56]">
-        <div class="truncate pr-3">
-          <div class="text-sm font-semibold text-white truncate">{studio.activeKit.name}</div>
-          <div class="text-xs text-[#64748B] font-mono-tabular">
-            {studio.activeKit.layers.length} livelli attivi · ID {studio.activeKit.id.slice(0, 8)}
+          {:else}
+            <div class="text-4xl">👕</div>
+          {/if}
+        </div>
+        <div class="mt-3 text-center">
+          <div class="text-lg font-bold text-white tracking-wide">{studio.activeKit.name}</div>
+          <div class="text-xs text-[#64748B] mt-0.5">
+            {i18n.catalog.categories[studio.activeKit.category]} · {studio.activeKit.layers.length} livelli grafici
           </div>
         </div>
-        <button
-          type="button"
-          onclick={() => studio.navigateTo('SCR-EDITOR')}
-          class="px-4 py-2 text-xs font-semibold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-        >
-          Continua Editing
-        </button>
       </div>
+
+      <button
+        type="button"
+        onclick={() => studio.navigateTo('SCR-EDITOR')}
+        class="w-full py-3 px-4 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-xl transition-all shadow-md shadow-[#00C49F]/20 cursor-pointer flex items-center justify-center gap-1.5"
+      >
+        <span>Apri nell'Editor 3D</span>
+        <span>→</span>
+      </button>
     </div>
   </div>
 
-  <!-- Recent 3 Modified Drafts Grid (Required by SCR-HOME) -->
+  <!-- Recent Projects Section -->
   <div class="space-y-5">
-    <div class="flex items-center justify-between border-b border-[#2E3D56] pb-4">
+    <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold font-display tracking-wide text-white">
-          {i18n.home.recent_drafts_title}
+        <h2 class="text-2xl font-bold font-display tracking-tight text-white">
+          I Tuoi Ultimi Progetti
         </h2>
-        <p class="text-sm text-[#94A3B8]">
-          Le ultime 3 divise salvate in IndexedDB locale con minikit 2D a 512×512 px.
+        <p class="text-xs text-[#94A3B8] mt-1">
+          Modifica le tue divise, esporta nuove texture o condividile con gli amici.
         </p>
       </div>
 
       <button
         type="button"
         onclick={() => studio.navigateTo('SCR-SAVED')}
-        class="text-sm font-medium text-[#00C49F] hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+        class="text-xs font-semibold text-[#00C49F] hover:underline cursor-pointer"
       >
-        {i18n.home.cta_all_kits} →
+        Vedi tutti ({studio.savedKits.length}) →
       </button>
     </div>
 
     {#if studio.recentThreeDrafts.length === 0}
-      <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-10 text-center space-y-4">
-        <p class="text-sm text-[#94A3B8]">{i18n.home.empty_drafts}</p>
+      <div class="bg-[#1A2230] border border-[#2E3D56] rounded-2xl p-10 text-center space-y-4">
+        <div class="text-4xl">⚽</div>
+        <div class="text-sm font-medium text-white">Nessuna divisa creata finora</div>
+        <p class="text-xs text-[#94A3B8] max-w-md mx-auto">
+          Inizia scegliendo uno dei nostri modelli geometrici ispirati ai più grandi club del mondo.
+        </p>
         <button
           type="button"
           onclick={() => studio.navigateTo('SCR-CATALOG')}
-          class="px-5 py-2.5 text-xs font-semibold text-white bg-[#0F52BA] rounded-lg hover:bg-[#0A387E] transition-colors cursor-pointer"
+          class="px-5 py-2.5 text-xs font-semibold text-white bg-[#0F52BA] rounded-xl hover:bg-[#0A387E] transition-colors cursor-pointer"
         >
-          Esplora Catalogo Template
+          Esplora Modelli
         </button>
       </div>
     {:else}
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         {#each studio.recentThreeDrafts as draft (draft.id)}
-          <article class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-5 flex flex-col justify-between hover:border-[#0F52BA] transition-colors">
+          <article class="bg-[#1A2230] border border-[#2E3D56] hover:border-[#0F52BA]/60 rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-xl hover:shadow-[#0F52BA]/10 group">
             <div>
-              <!-- Unboxed quiet metadata line per Zero-Pill rule -->
               <div class="flex items-center justify-between text-xs text-[#94A3B8] mb-3 font-mono-tabular">
-                <span>{i18n.catalog.categories[draft.category]} · {draft.layers.length} livelli</span>
-                <span>{formatDate(draft.updatedAt)}</span>
+                <span class="px-2 py-0.5 rounded-full bg-[#0F141C] border border-[#2E3D56] text-[11px] text-[#00C49F]">
+                  {i18n.catalog.categories[draft.category]}
+                </span>
+                <span class="text-[11px] text-[#64748B]">{formatDate(draft.updatedAt)}</span>
               </div>
 
-              <div class="bg-[#0F141C] rounded-lg p-3 flex items-center justify-center aspect-square mb-4">
+              <div class="bg-[#0F141C] rounded-xl p-3 flex items-center justify-center aspect-square mb-4 border border-[#2E3D56]/60">
                 {#if draft.metadata?.thumbnailDataUrl}
                   <img
                     src={draft.metadata.thumbnailDataUrl}
-                    alt="Minikit 2D {draft.name}"
-                    class="w-full h-full object-contain rounded"
+                    alt="Kit {draft.name}"
+                    class="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform"
                   />
                 {:else}
-                  <div class="text-xs text-[#64748B]">Minikit 2D</div>
+                  <div class="text-3xl">👕</div>
                 {/if}
               </div>
 
-              <h3 class="text-lg font-semibold text-white truncate">{draft.name}</h3>
-              <p class="text-xs text-[#64748B] font-mono-tabular mt-1">
-                UUID: {draft.id.slice(0, 13)}…
+              <h3 class="text-base font-bold text-white truncate">{draft.name}</h3>
+              <p class="text-xs text-[#64748B] mt-0.5">
+                {draft.layers.length} elementi · Tessuto {draft.metadata?.fabricType || 'Mesh'}
               </p>
             </div>
 
-            <div class="flex items-center gap-3 mt-5 pt-4 border-t border-[#2E3D56]">
+            <div class="flex items-center gap-2 mt-5 pt-4 border-t border-[#2E3D56]">
               <button
                 type="button"
                 onclick={() => studio.openSavedKit(draft, 'SCR-EDITOR')}
-                class="flex-1 py-2 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                class="flex-1 py-2 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] rounded-lg transition-colors cursor-pointer text-center"
               >
-                Apri nell'Editor
+                Modifica
               </button>
               <button
                 type="button"
                 onclick={() => studio.openSavedKit(draft, 'SCR-EXPORT')}
-                class="py-2 px-3 text-xs font-medium text-[#94A3B8] hover:text-white bg-[#253146] rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                class="py-2 px-3 text-xs font-medium text-[#94A3B8] hover:text-white bg-[#253146] hover:bg-[#2E3D56] rounded-lg transition-colors cursor-pointer"
               >
                 Esporta
               </button>
@@ -236,17 +236,22 @@
   </div>
 
   <!-- Quick Template Starter Strip -->
-  <div class="space-y-4 pt-2">
+  <div class="space-y-5 pt-2">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-bold font-display tracking-wide text-white">
-        Avvio Rapido da Modello Geometrico
-      </h2>
+      <div>
+        <h2 class="text-2xl font-bold font-display tracking-tight text-white">
+          Modelli di Partenza Rapida
+        </h2>
+        <p class="text-xs text-[#94A3B8] mt-1">
+          Scegli un'impostazione geometrica classica per creare la tua divisa in pochi secondi.
+        </p>
+      </div>
       <button
         type="button"
         onclick={() => studio.navigateTo('SCR-CATALOG')}
-        class="text-xs font-medium text-[#94A3B8] hover:text-white cursor-pointer"
+        class="text-xs font-semibold text-[#00C49F] hover:underline cursor-pointer"
       >
-        Vedi tutti i {BUILTIN_TEMPLATES.length} template →
+        Vedi tutti i {BUILTIN_TEMPLATES.length} modelli →
       </button>
     </div>
 
@@ -255,17 +260,17 @@
         <button
           type="button"
           onclick={() => studio.selectTemplate(tpl)}
-          class="text-left bg-[#1A2230] hover:bg-[#253146] border border-[#2E3D56] rounded-xl p-4 flex items-center gap-4 transition-colors cursor-pointer"
+          class="text-left bg-[#1A2230] hover:bg-[#253146] border border-[#2E3D56] hover:border-[#00C49F]/50 rounded-2xl p-4 flex items-center gap-4 transition-all cursor-pointer shadow-sm group"
         >
           <div
-            class="w-12 h-12 rounded-lg shrink-0 border border-white/15 flex items-center justify-center"
+            class="w-14 h-14 rounded-xl shrink-0 border border-white/15 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform"
             style="background: linear-gradient(135deg, {tpl.basePreviewColor} 50%, {tpl.accentPreviewColor} 50%);"
           >
-            <span class="w-3 h-3 rounded-full" style="background-color: {tpl.secondaryPreviewColor};"></span>
+            <span class="w-3.5 h-3.5 rounded-full shadow-sm" style="background-color: {tpl.secondaryPreviewColor};"></span>
           </div>
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold text-white truncate">{tpl.name}</div>
-            <div class="text-xs text-[#94A3B8] truncate">
+            <div class="text-sm font-bold text-white truncate group-hover:text-[#00C49F] transition-colors">{tpl.name}</div>
+            <div class="text-xs text-[#94A3B8] truncate mt-0.5">
               {i18n.catalog.categories[tpl.category]} · {tpl.patternSummary}
             </div>
           </div>

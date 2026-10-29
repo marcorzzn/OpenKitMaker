@@ -126,6 +126,51 @@ fun ExportScreen(
             }
         }
 
+        // Hero Action: Social and WhatsApp Showcase Mockup (1080x1080 HD)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(Color(0xFF0F2B48), Color(0xFF143A3A))
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .border(1.5.dp, Color(0xFF00C49F), RoundedCornerShape(16.dp))
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "📸 Showcase Social & WhatsApp (1080×1080 HD)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Genera istantaneamente una cartolina quadrata HD del kit completo con sfondo studio e logo, perfetta per Instagram, WhatsApp o presentazioni alla squadra.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+                Button(
+                    onClick = { viewModel.exportGarmentPngLossless(GarmentType.JERSEY) },
+                    enabled = !isExporting,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C49F)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Scarica 1080p HD", color = Color(0xFF0F141C), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         // Section 1: Texture 2D Singolo Capo
         Box(
             modifier = Modifier

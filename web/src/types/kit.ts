@@ -61,7 +61,7 @@ export type ViewportBackground = 'dark' | 'neutral' | 'pitch';
 export type CameraPreset = 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT';
 export type FabricType = 'MESH' | 'POLYESTER' | 'COTTON' | 'JACQUARD';
 export type ExportResolution = 2048 | 4096;
-export type ExportFormatType = 'PNG_2K' | 'PNG_4K' | 'ZIP_FULL_KIT' | 'PBR_BUNDLE' | 'GLB_3D';
+export type ExportFormatType = 'PNG_2K' | 'PNG_4K' | 'ZIP_FULL_KIT' | 'PBR_BUNDLE' | 'GLB_3D' | 'SOCIAL_1080';
 
 export interface Decal {
   id: string;

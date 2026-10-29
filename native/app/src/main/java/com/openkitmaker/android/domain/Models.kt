@@ -129,7 +129,8 @@ enum class ExportFormatType(val labelIt: String, val extension: String) {
     PNG_4K("Texture PNG 4K Ultra HD", "png"),
     ZIP_FULL_KIT("Archivio Full Kit (.ZIP)", "zip"),
     PBR_BUNDLE("Bundle Materiali PBR (.ZIP)", "zip"),
-    GLB_3D("Modello 3D (.GLB)", "glb")
+    GLB_3D("Modello 3D (.GLB)", "glb"),
+    SOCIAL_1080("Showcase Social 1080×1080", "png")
 }
 
 @Serializable

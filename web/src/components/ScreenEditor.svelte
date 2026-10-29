@@ -66,6 +66,29 @@
       : allRailItems
   );
 
+  type EditorTab = 'COLOR_FABRIC' | 'PATTERNS' | 'LOGOS' | 'LAYERS';
+  let activeEditorTab = $state<EditorTab>('COLOR_FABRIC');
+  let activeLogoSubTab = $state<'BADGE' | 'SPONSOR' | 'NUMBER'>('BADGE');
+
+  let patternLayer = $derived(studio.activeLayers.find((l) => l.type === 'PATTERN'));
+  let baseLayer = $derived(studio.activeLayers.find((l) => l.type === 'BASE'));
+  let collarLayer = $derived(studio.activeLayers.find((l) => l.type === 'COLLAR'));
+  let sleevesLayer = $derived(studio.activeLayers.find((l) => l.type === 'SLEEVES'));
+  let badgeLayer = $derived(studio.activeLayers.find((l) => l.type === 'BADGE'));
+  let sponsorLayer = $derived(studio.activeLayers.find((l) => l.type === 'SPONSOR'));
+  let nameLayer = $derived(studio.activeLayers.find((l) => l.type === 'TEXT_NAME'));
+  let numberLayer = $derived(studio.activeLayers.find((l) => l.type === 'NUMBER'));
+
+  function getOrCreateLayer(type: LayerType) {
+    const existing = studio.activeLayers.find((l) => l.type === type);
+    if (existing) {
+      studio.selectedLayerId = existing.id;
+      return existing;
+    }
+    studio.addNewLayer(type);
+    return studio.selectedLayer;
+  }
+
   const fabricPresets: {
     type: FabricType;
     label: string;
@@ -403,8 +426,9 @@
         {/each}
       </select>
 
-      <span class="hidden xl:inline-block text-xs text-[#64748B] font-mono-tabular whitespace-nowrap">
-        2048×2048 RGBA · Render: {studio.lastCompositeTimeMs} ms
+      <span class="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#00C49F] bg-[#00C49F]/10 border border-[#00C49F]/20 rounded-full font-medium whitespace-nowrap">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#00C49F] animate-pulse"></span>
+        Tessuto: {fabricPresets.find(f => f.type === studio.fabricType)?.label ?? 'Mesh'} · 3D Live
       </span>
     </div>
 
@@ -527,365 +551,155 @@
   <!-- Main Editor Studio Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
     {#if studio.activeGarmentType !== 'ALL'}
-      <!-- Left Column: Component Icon Rail + Layer Stack + Inspector + HSV Picker (lg:col-span-4) -->
-      <div class="lg:col-span-4 bg-[#1A2230] border border-[#2E3D56] rounded-xl overflow-hidden flex flex-col">
-        <!-- Component Icon Rail (Material Design 3 Surface) -->
-        <div class="p-2.5 bg-[#0F141C] border-b border-[#2E3D56] grid grid-cols-4 gap-1.5">
-          {#each componentRailItems as item (item.type)}
-            {@const isSelectedType = studio.selectedLayer?.type === item.type}
-            <button
-              type="button"
-              onclick={() => studio.selectLayerByType(item.type)}
-              class="px-2 py-2 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 {isSelectedType
-                ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
-                : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
-            >
-              <span class="text-base">{item.icon}</span>
-              <span class="text-[11px] font-semibold whitespace-nowrap">{item.label}</span>
-            </button>
-          {/each}
+      <!-- Left Column: 4-Tab Sports Design Station (lg:col-span-4) -->
+      <div class="lg:col-span-4 bg-[#1A2230] border border-[#2E3D56] rounded-xl overflow-hidden flex flex-col shadow-xl">
+        <!-- 4 Primary Functional Navigation Tabs -->
+        <div class="grid grid-cols-4 bg-[#0F141C] border-b border-[#2E3D56] p-1.5 gap-1">
+          <button
+            type="button"
+            onclick={() => {
+              activeEditorTab = 'COLOR_FABRIC';
+              studio.selectLayerByType('BASE');
+            }}
+            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'COLOR_FABRIC'
+              ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
+              : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
+          >
+            <span class="text-base">🎨</span>
+            <span class="text-[11px] leading-tight font-semibold">Colori</span>
+          </button>
+
+          <button
+            type="button"
+            onclick={() => {
+              activeEditorTab = 'PATTERNS';
+              const pat = studio.activeLayers.find((l) => l.type === 'PATTERN');
+              if (pat) {
+                studio.selectedLayerId = pat.id;
+              } else {
+                studio.addNewLayer('PATTERN');
+              }
+            }}
+            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'PATTERNS'
+              ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
+              : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
+          >
+            <span class="text-base">⚡</span>
+            <span class="text-[11px] leading-tight font-semibold">Pattern</span>
+          </button>
+
+          <button
+            type="button"
+            onclick={() => {
+              activeEditorTab = 'LOGOS';
+              if (activeLogoSubTab === 'BADGE') getOrCreateLayer('BADGE');
+              else if (activeLogoSubTab === 'SPONSOR') getOrCreateLayer('SPONSOR');
+              else if (activeLogoSubTab === 'NUMBER') getOrCreateLayer('NUMBER');
+            }}
+            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LOGOS'
+              ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
+              : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
+          >
+            <span class="text-base">🛡️</span>
+            <span class="text-[11px] leading-tight font-semibold">Stemmi</span>
+          </button>
+
+          <button
+            type="button"
+            onclick={() => (activeEditorTab = 'LAYERS')}
+            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LAYERS'
+              ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
+              : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
+          >
+            <span class="text-base">📑</span>
+            <span class="text-[11px] leading-tight font-semibold">Livelli ({studio.activeLayers.length})</span>
+          </button>
         </div>
 
-        <div class="p-4 space-y-5 max-h-[calc(100vh-180px)] overflow-y-auto">
-          <!-- Layer Stack Manager (FUN-MANAGE-LAYERS) -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-white">
-                Pila Livelli {studio.activeGarmentType === 'JERSEY' ? 'Maglia' : studio.activeGarmentType === 'SHORTS' ? 'Pantaloncini' : 'Calzettoni'} ({studio.activeLayers.length})
-              </span>
-              <button
-                type="button"
-                onclick={() =>
-                  studio.addNewLayer(studio.selectedLayer?.type || 'PATTERN')}
-                class="px-2.5 py-1 text-xs font-semibold text-[#00C49F] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
-              >
-                + Nuovo Livello
-              </button>
-            </div>
-
-            <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
-              {#each [...studio.activeLayers].sort((a, b) => b.zIndex - a.zIndex) as layer (layer.id)}
-                {@const isCurrent = studio.selectedLayer?.id === layer.id}
-                <div
-                  class="flex flex-col gap-2.5 p-4 rounded-xl border shadow-sm transition-all {isCurrent
-                    ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/30'
-                    : 'bg-[#0F141C] border-[#2E3D56] hover:border-[#64748B]'}"
-                >
-                  <div class="flex items-center justify-between gap-3">
+        <!-- TAB 1: COLORI & TESSUTO -->
+        {#if activeEditorTab === 'COLOR_FABRIC'}
+          <div class="p-4 space-y-4 max-h-[calc(100vh-210px)] overflow-y-auto">
+            <!-- Garment Piece Selector -->
+            <div class="space-y-1.5">
+              <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Zona da Colorare:</span>
+              <div class="grid grid-cols-3 gap-1.5">
+                {#if studio.activeGarmentType === 'JERSEY'}
                   <button
                     type="button"
-                    onclick={() => (studio.selectedLayerId = layer.id)}
-                    class="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
+                    onclick={() => studio.selectLayerByType('BASE')}
+                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
-                    <span
-                      class="w-7 h-7 rounded-lg border border-white/30 shrink-0 shadow-md flex items-center justify-center text-sm"
-                      style="background-color: {layer.color};"
-                    >
-                      {getLayerIcon(layer.type)}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                      <div class="text-sm font-semibold text-white truncate flex items-center gap-1.5">
-                        <span>{layer.name}</span>
-                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-[#0F141C] text-[#00C49F] font-mono-tabular border border-[#2E3D56]">z:{layer.zIndex}</span>
-                      </div>
-                      <div class="text-[11px] text-[#94A3B8] font-mono-tabular">
-                        {i18n.editor.component_rail[layer.type]} · Opacità: {Math.round(layer.opacity * 100)}%
-                      </div>
-                    </div>
+                    <span>👕</span>
+                    <span>Corpo</span>
                   </button>
-
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onclick={() => studio.toggleLayerVisibility(layer.id)}
-                      class="px-2 py-1 text-[11px] font-mono-tabular font-semibold rounded-md transition-colors {layer.visible
-                        ? 'bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40'
-                        : 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40'} cursor-pointer"
-                      title={layer.visible ? 'Nascondi livello' : 'Mostra livello'}
-                    >
-                      {layer.visible ? 'ON' : 'OFF'}
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => studio.moveLayerZIndex(layer.id, 'UP')}
-                      class="w-7 h-7 flex items-center justify-center rounded-md bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
-                      title="Sposta su (z-index +)"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => studio.moveLayerZIndex(layer.id, 'DOWN')}
-                      class="w-7 h-7 flex items-center justify-center rounded-md bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
-                      title="Sposta giù (z-index -)"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                </div>
-              </div>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Layer Inspector (Opacity, Blend Mode, Component-Specific Properties) -->
-        {#if studio.selectedLayer}
-          {@const activeLayer = studio.selectedLayer}
-          <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-4 space-y-4">
-            <div class="flex items-center justify-between gap-2 border-b border-[#2E3D56] pb-2.5">
-              <input
-                type="text"
-                value={activeLayer.name}
-                oninput={(e) => {
-                  activeLayer.name = (e.target as HTMLInputElement).value;
-                  studio.textureRevision++;
-                }}
-                class="text-xs font-semibold text-white bg-transparent border-b border-transparent focus:border-[#00C49F] focus:outline-none flex-1"
-              />
-              <button
-                type="button"
-                onclick={() => studio.deleteLayer(activeLayer.id)}
-                class="text-xs text-[#EF4444] hover:underline cursor-pointer whitespace-nowrap"
-              >
-                Elimina
-              </button>
-            </div>
-
-            <!-- Opacity Slider (0.0 .. 1.0) & Blend Mode (NORMAL, MULTIPLY, OVERLAY) -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                  <span>Opacità</span>
-                  <span>{activeLayer.opacity.toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={activeLayer.opacity}
-                  oninput={(e) =>
-                    studio.setLayerOpacity(
-                      activeLayer.id,
-                      parseFloat((e.target as HTMLInputElement).value)
-                    )}
-                  class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                />
-              </div>
-
-              <div>
-                <label for="blend-mode-select" class="block text-xs text-[#94A3B8] mb-1">
-                  Metodo di Fusione (Blend)
-                </label>
-                <select
-                  id="blend-mode-select"
-                  value={activeLayer.blendMode}
-                  onchange={(e) =>
-                    studio.setLayerBlendMode(
-                      activeLayer.id,
-                      (e.target as HTMLSelectElement).value as BlendMode
-                    )}
-                  class="w-full px-2.5 py-1.5 text-xs font-semibold bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white focus:outline-none focus:border-[#00C49F]"
-                >
-                  {#each blendModes as bm (bm.value)}
-                    <option value={bm.value}>{bm.label}</option>
-                  {/each}
-                </select>
+                  <button
+                    type="button"
+                    onclick={() => getOrCreateLayer('COLLAR')}
+                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
+                  >
+                    <span>👔</span>
+                    <span>Colletto</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => getOrCreateLayer('SLEEVES')}
+                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'SLEEVES'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
+                  >
+                    <span>💪</span>
+                    <span>Maniche</span>
+                  </button>
+                {:else if studio.activeGarmentType === 'SHORTS'}
+                  <button
+                    type="button"
+                    onclick={() => studio.selectLayerByType('BASE')}
+                    class="col-span-3 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
+                  >
+                    <span>🩳</span>
+                    <span>Tessuto Pantaloncini</span>
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    onclick={() => studio.selectLayerByType('BASE')}
+                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
+                  >
+                    <span>🧦</span>
+                    <span>Calza</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => getOrCreateLayer('COLLAR')}
+                    class="col-span-2 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
+                  >
+                    <span>👔</span>
+                    <span>Bordo Elastico</span>
+                  </button>
+                {/if}
               </div>
             </div>
 
-            <!-- Contextual Properties Inspector by LayerType -->
-            {#if activeLayer.type === 'PATTERN'}
-              <div class="space-y-4 pt-2 border-t border-[#2E3D56]">
-                <!-- Procedural Pattern Generator Card -->
-                <div class="bg-[#141B26] border border-[#2E3D56] rounded-xl p-3.5 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>⚡📐</span>
-                      <span>Generatore Pattern Procedurali</span>
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#00C49F]/20 text-[#00C49F] font-mono-tabular border border-[#00C49F]/30">4 Algoritmi</span>
-                  </div>
-
-                  <!-- 4 Algorithm Quick Cards -->
-                  <div class="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onclick={() => studio.updateLayerProperty(activeLayer.id, 'patternStyle', 'HEXAGONS')}
-                      class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {activeLayer.properties.patternStyle === 'HEXAGONS'
-                        ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
-                        : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
-                    >
-                      <div class="text-base font-bold">⬡</div>
-                      <div class="text-xs font-semibold">Esagoni</div>
-                      <div class="text-[10px] opacity-75">Griglia Matematica</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onclick={() => studio.updateLayerProperty(activeLayer.id, 'patternStyle', 'WAVES')}
-                      class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {activeLayer.properties.patternStyle === 'WAVES'
-                        ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
-                        : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
-                    >
-                      <div class="text-base font-bold">〰</div>
-                      <div class="text-xs font-semibold">Onde</div>
-                      <div class="text-[10px] opacity-75">Sinusoidale Fluido</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onclick={() => studio.updateLayerProperty(activeLayer.id, 'patternStyle', 'CAMOUFLAGE')}
-                      class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {activeLayer.properties.patternStyle === 'CAMOUFLAGE'
-                        ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
-                        : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
-                    >
-                      <div class="text-base font-bold">🫧</div>
-                      <div class="text-xs font-semibold">Mimetico</div>
-                      <div class="text-[10px] opacity-75">Blob Organici (Noise)</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onclick={() => studio.updateLayerProperty(activeLayer.id, 'patternStyle', 'ABSTRACT_GEOMETRIC')}
-                      class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {activeLayer.properties.patternStyle === 'ABSTRACT_GEOMETRIC'
-                        ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
-                        : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
-                    >
-                      <div class="text-base font-bold">📐</div>
-                      <div class="text-xs font-semibold">Geometria</div>
-                      <div class="text-[10px] opacity-75">Linee e Triangoli</div>
-                    </button>
-                  </div>
-
-                  <div>
-                    <label for="pattern-style-full" class="block text-xs text-[#94A3B8] mb-1">
-                      Tutti i Modelli di Pattern
-                    </label>
-                    <select
-                      id="pattern-style-full"
-                      value={activeLayer.properties.patternStyle || 'VERTICAL_STRIPES'}
-                      onchange={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'patternStyle',
-                          (e.target as HTMLSelectElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                    >
-                      {#each patternStyles as ps (ps.value)}
-                        <option value={ps.value}>{ps.label}</option>
-                      {/each}
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Pattern Parameters Sliders -->
-                <div class="space-y-3">
-                  <div class="grid grid-cols-2 gap-3">
-                    <div>
-                      <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Scala Pattern</span>
-                        <span>{(Number(activeLayer.properties.patternScale ?? 1.0)).toFixed(1)}x</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.3"
-                        max="3.0"
-                        step="0.1"
-                        value={activeLayer.properties.patternScale ?? 1.0}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'patternScale',
-                            parseFloat((e.target as HTMLInputElement).value)
-                          )}
-                        class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                      />
-                    </div>
-
-                    <div>
-                      <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Rotazione</span>
-                        <span>{activeLayer.properties.patternRotation ?? 0}°</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="360"
-                        step="5"
-                        value={activeLayer.properties.patternRotation ?? 0}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'patternRotation',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-3">
-                    <div>
-                      <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Frequenza / Righe</span>
-                        <span>{activeLayer.properties.stripeCount ?? 5}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="16"
-                        step="1"
-                        value={activeLayer.properties.stripeCount ?? 5}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'stripeCount',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                      />
-                    </div>
-
-                    <div>
-                      <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Spessore / Densitá</span>
-                        <span>{Math.round(Number(activeLayer.properties.stripeWidth ?? 0.48) * 100)}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.10"
-                        max="0.90"
-                        step="0.02"
-                        value={activeLayer.properties.stripeWidth ?? 0.48}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'stripeWidth',
-                            parseFloat((e.target as HTMLInputElement).value)
-                          )}
-                        class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            {:else if activeLayer.type === 'COLLAR'}
-              <div class="grid grid-cols-2 gap-3 pt-2 border-t border-[#2E3D56]">
+            <!-- Contextual Collar / Sleeves options if selected -->
+            {#if studio.selectedLayer?.type === 'COLLAR'}
+              {@const activeLayer = studio.selectedLayer}
+              <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
                 <div>
-                  <label for="collar-style" class="block text-xs text-[#94A3B8] mb-1">
-                    Taglio Colletto
-                  </label>
+                  <label for="collar-style-tab" class="block text-xs text-[#94A3B8] mb-1">Taglio Colletto</label>
                   <select
-                    id="collar-style"
+                    id="collar-style-tab"
                     value={activeLayer.properties.collarStyle || 'V_NECK'}
-                    onchange={(e) =>
-                      studio.updateLayerProperty(
-                        activeLayer.id,
-                        'collarStyle',
-                        (e.target as HTMLSelectElement).value
-                      )}
+                    onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'collarStyle', (e.target as HTMLSelectElement).value)}
                     class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
                   >
                     {#each collarStyles as cs (cs.value)}
@@ -893,7 +707,6 @@
                     {/each}
                   </select>
                 </div>
-
                 <div>
                   <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
                     <span>Bordo Trim</span>
@@ -905,18 +718,14 @@
                     max="36"
                     step="1"
                     value={activeLayer.properties.trimWidth ?? 16}
-                    oninput={(e) =>
-                      studio.updateLayerProperty(
-                        activeLayer.id,
-                        'trimWidth',
-                        parseInt((e.target as HTMLInputElement).value, 10)
-                      )}
+                    oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'trimWidth', parseInt((e.target as HTMLInputElement).value, 10))}
                     class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                   />
                 </div>
               </div>
-            {:else if activeLayer.type === 'SLEEVES'}
-              <div class="grid grid-cols-2 gap-3 pt-2 border-t border-[#2E3D56] items-center">
+            {:else if studio.selectedLayer?.type === 'SLEEVES'}
+              {@const activeLayer = studio.selectedLayer}
+              <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl items-center">
                 <div>
                   <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
                     <span>Polsino</span>
@@ -928,461 +737,868 @@
                     max="60"
                     step="2"
                     value={activeLayer.properties.cuffWidth ?? 34}
-                    oninput={(e) =>
-                      studio.updateLayerProperty(
-                        activeLayer.id,
-                        'cuffWidth',
-                        parseInt((e.target as HTMLInputElement).value, 10)
-                      )}
+                    oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'cuffWidth', parseInt((e.target as HTMLInputElement).value, 10))}
                     class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                   />
                 </div>
-
                 <label class="flex items-center gap-2 text-xs text-white cursor-pointer pt-3">
                   <input
                     type="checkbox"
                     checked={Boolean(activeLayer.properties.raglanCut ?? true)}
-                    onchange={(e) =>
-                      studio.updateLayerProperty(
-                        activeLayer.id,
-                        'raglanCut',
-                        (e.target as HTMLInputElement).checked
-                      )}
+                    onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'raglanCut', (e.target as HTMLInputElement).checked)}
                     class="accent-[#00C49F]"
                   />
                   Taglio Spalla Raglan
                 </label>
               </div>
-            {:else if activeLayer.type === 'BADGE'}
-              <div class="space-y-3 pt-2 border-t border-[#2E3D56]">
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label for="badge-shape" class="block text-xs text-[#94A3B8] mb-1">
-                      Sagoma Stemma
-                    </label>
-                    <select
-                      id="badge-shape"
-                      value={activeLayer.properties.badgeShape || 'HEXAGON_PRO'}
-                      onchange={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'badgeShape',
-                          (e.target as HTMLSelectElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                    >
-                      {#each badgeShapes as bs (bs.value)}
-                        <option value={bs.value}>{bs.label}</option>
-                      {/each}
-                    </select>
-                  </div>
+            {/if}
 
-                  <div>
-                    <label for="badge-pos" class="block text-xs text-[#94A3B8] mb-1">
-                      Posizione Petto
-                    </label>
-                    <select
-                      id="badge-pos"
-                      value={activeLayer.properties.badgePosition || 'LEFT_CHEST'}
-                      onchange={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'badgePosition',
-                          (e.target as HTMLSelectElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                    >
-                      {#each badgePositions as bp (bp.value)}
-                        <option value={bp.value}>{bp.label}</option>
-                      {/each}
-                    </select>
-                  </div>
+            <!-- Color Picker for the active part -->
+            {#if studio.selectedLayer}
+              {@const currentL = studio.selectedLayer}
+              <div class="space-y-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
+                  Tavolozza Colori — {currentL.name}:
+                </span>
+                <ColorPickerHsv
+                  activeHex={currentL.color}
+                  secondaryHex={currentL.secondaryColor}
+                  hasSecondary={true}
+                  onColorChange={(hex, isSec, commit) =>
+                    studio.updateLayerColor(currentL.id, hex, isSec, commit)}
+                />
+              </div>
+            {/if}
+
+            <!-- Fabric Presets Card -->
+            <div class="p-3.5 rounded-xl border border-[#2E3D56] bg-[#0F141C] space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>🎽</span> Tessuto & Materiale PBR
+                </span>
+                <span class="text-[10px] font-mono-tabular px-2 py-0.5 rounded-full bg-[#1A2230] text-[#00C49F] border border-[#2E3D56]">
+                  {fabricPresets.find(f => f.type === studio.fabricType)?.label ?? 'Mesh'}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                {#each fabricPresets as preset (preset.type)}
+                  {@const isSelected = studio.fabricType === preset.type}
+                  <button
+                    type="button"
+                    onclick={() => studio.setFabricType(preset.type)}
+                    class="p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 {isSelected
+                      ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/40'
+                      : 'bg-[#1A2230] border-[#2E3D56] hover:border-[#64748B]'}"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm">{preset.icon}</span>
+                      <span class="text-[9px] font-mono-tabular text-[#94A3B8]">
+                        R:{preset.roughness.toFixed(2)}
+                      </span>
+                    </div>
+                    <span class="text-xs font-semibold {isSelected ? 'text-[#00C49F]' : 'text-white'}">
+                      {preset.label}
+                    </span>
+                    <span class="text-[10px] text-[#94A3B8] line-clamp-2">
+                      {preset.desc}
+                    </span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- TAB 2: TRAMA & PATTERN -->
+        {#if activeEditorTab === 'PATTERNS'}
+          <div class="p-4 space-y-4 max-h-[calc(100vh-210px)] overflow-y-auto">
+            {#if !patternLayer}
+              <div class="p-6 bg-[#0F141C] border border-[#2E3D56] rounded-xl text-center space-y-3">
+                <div class="text-3xl">⚡</div>
+                <div class="text-sm font-bold text-white">Nessuna Trama Grafica Attiva</div>
+                <p class="text-xs text-[#94A3B8]">
+                  Aggiungi un pattern geometrico procedurale o le classiche strisce per personalizzare questo capo.
+                </p>
+                <button
+                  type="button"
+                  onclick={() => studio.addNewLayer('PATTERN')}
+                  class="px-4 py-2 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-lg transition-colors cursor-pointer"
+                >
+                  + Attiva Grafica Pattern
+                </button>
+              </div>
+            {:else}
+              {@const patLayer = patternLayer}
+              <!-- Generatore Procedurale Quick Cards -->
+              <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-3.5 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>⚡📐</span>
+                    <span>Pattern Procedurali 3D</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#00C49F]/20 text-[#00C49F] font-mono-tabular border border-[#00C49F]/30">4 Algoritmi</span>
                 </div>
 
-                <!-- Magnetic Snapping & Micro-Alignment Pad for Badge -->
-                <div class="bg-[#141B26] border border-[#2E3D56] rounded-xl p-3 space-y-2">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>🧲</span>
-                      <span>Snapping Magnetico Stemma</span>
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] font-mono-tabular border border-[#38BDF8]/30">Guida Attiva</span>
-                  </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onclick={() => {
+                      studio.selectedLayerId = patLayer.id;
+                      studio.updateLayerProperty(patLayer.id, 'patternStyle', 'HEXAGONS');
+                    }}
+                    class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {patLayer.properties.patternStyle === 'HEXAGONS'
+                      ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
+                      : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
+                  >
+                    <div class="text-base font-bold">⬡</div>
+                    <div class="text-xs font-semibold">Esagoni</div>
+                    <div class="text-[10px] opacity-75">Griglia Matematica</div>
+                  </button>
 
-                  <div class="grid grid-cols-3 gap-1.5">
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('CREST_LEFT')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#00C49F] border border-[#2E3D56] cursor-pointer"
-                    >
-                      🛡️ Cuore SX
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('CHEST_CENTER')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
-                    >
-                      🎯 Centro
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('CREST_RIGHT')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#94A3B8] border border-[#2E3D56] cursor-pointer"
-                    >
-                      🛡️ Petto DX
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('COLLAR')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
-                    >
-                      👔 Colletto
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('RESET')}
-                      class="col-span-2 px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#EF4444] border border-[#2E3D56] cursor-pointer"
-                    >
-                      ↺ Reset Offset (0, 0)
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onclick={() => {
+                      studio.selectedLayerId = patLayer.id;
+                      studio.updateLayerProperty(patLayer.id, 'patternStyle', 'WAVES');
+                    }}
+                    class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {patLayer.properties.patternStyle === 'WAVES'
+                      ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
+                      : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
+                  >
+                    <div class="text-base font-bold">〰</div>
+                    <div class="text-xs font-semibold">Onde</div>
+                    <div class="text-[10px] opacity-75">Sinusoidale Fluido</div>
+                  </button>
 
-                  <div class="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Offset X</span>
-                        <span>{activeLayer.properties.offsetX ?? 0}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-200"
-                        max="200"
-                        step="2"
-                        value={activeLayer.properties.offsetX ?? 0}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'offsetX',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
-                      />
-                    </div>
-                    <div>
-                      <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Offset Y</span>
-                        <span>{activeLayer.properties.offsetY ?? 0}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-200"
-                        max="200"
-                        step="2"
-                        value={activeLayer.properties.offsetY ?? 0}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'offsetY',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
-                      />
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onclick={() => {
+                      studio.selectedLayerId = patLayer.id;
+                      studio.updateLayerProperty(patLayer.id, 'patternStyle', 'CAMOUFLAGE');
+                    }}
+                    class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {patLayer.properties.patternStyle === 'CAMOUFLAGE'
+                      ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
+                      : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
+                  >
+                    <div class="text-base font-bold">🫧</div>
+                    <div class="text-xs font-semibold">Mimetico</div>
+                    <div class="text-[10px] opacity-75">Blob Organici (Noise)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={() => {
+                      studio.selectedLayerId = patLayer.id;
+                      studio.updateLayerProperty(patLayer.id, 'patternStyle', 'ABSTRACT_GEOMETRIC');
+                    }}
+                    class="p-2.5 rounded-lg border text-left transition-all cursor-pointer {patLayer.properties.patternStyle === 'ABSTRACT_GEOMETRIC'
+                      ? 'bg-[#0F52BA] border-[#38BDF8] shadow-md shadow-[#0F52BA]/30 text-white'
+                      : 'bg-[#1A2230] border-[#2E3D56] text-[#94A3B8] hover:text-white hover:border-[#64748B]'}"
+                  >
+                    <div class="text-base font-bold">📐</div>
+                    <div class="text-xs font-semibold">Geometria</div>
+                    <div class="text-[10px] opacity-75">Linee e Triangoli</div>
+                  </button>
+                </div>
+
+                <div>
+                  <label for="pattern-style-tab" class="block text-xs text-[#94A3B8] mb-1">Tutti i Modelli di Pattern</label>
+                  <select
+                    id="pattern-style-tab"
+                    value={patLayer.properties.patternStyle || 'VERTICAL_STRIPES'}
+                    onchange={(e) => {
+                      studio.selectedLayerId = patLayer.id;
+                      studio.updateLayerProperty(patLayer.id, 'patternStyle', (e.target as HTMLSelectElement).value);
+                    }}
+                    class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                  >
+                    {#each patternStyles as ps (ps.value)}
+                      <option value={ps.value}>{ps.label}</option>
+                    {/each}
+                  </select>
                 </div>
               </div>
-            {:else if activeLayer.type === 'SPONSOR'}
-              <div class="space-y-3 pt-2 border-t border-[#2E3D56]">
+
+              <!-- Pattern Geometry Sliders -->
+              <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-3.5 space-y-3">
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label for="sponsor-geom" class="block text-xs text-[#94A3B8] mb-1">
-                      Motivo Geometrico
-                    </label>
-                    <select
-                      id="sponsor-geom"
-                      value={activeLayer.properties.sponsorGeometry || 'HEX_TECH_BAR'}
-                      onchange={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'sponsorGeometry',
-                          (e.target as HTMLSelectElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                    >
-                      {#each sponsorGeometries as sg (sg.value)}
-                        <option value={sg.value}>{sg.label}</option>
-                      {/each}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label for="sponsor-label" class="block text-xs text-[#94A3B8] mb-1">
-                      Testo Placeholder
-                    </label>
-                    <input
-                      id="sponsor-label"
-                      type="text"
-                      maxlength="14"
-                      value={activeLayer.properties.sponsorLabel ?? 'AERO·LAB'}
-                      oninput={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'sponsorLabel',
-                          (e.target as HTMLInputElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                    />
-                  </div>
-                </div>
-
-                <!-- Magnetic Snapping & Micro-Alignment Pad for Sponsor -->
-                <div class="bg-[#141B26] border border-[#2E3D56] rounded-xl p-3 space-y-2">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>🧲</span>
-                      <span>Snapping Magnetico Sponsor</span>
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] font-mono-tabular border border-[#38BDF8]/30">Guida Attiva</span>
-                  </div>
-
-                  <div class="grid grid-cols-3 gap-1.5">
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('CHEST_CENTER')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
-                    >
-                      🎯 Centro Petto
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('SPONSOR')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#00C49F] border border-[#2E3D56] cursor-pointer"
-                    >
-                      ⭐ Quota Standard
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('COLLAR')}
-                      class="px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
-                    >
-                      👔 Sotto Colletto
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => applyQuickSnap('RESET')}
-                      class="col-span-3 px-2 py-1 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#EF4444] border border-[#2E3D56] cursor-pointer"
-                    >
-                      ↺ Reimposta Posizione Centrale
-                    </button>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Offset X</span>
-                        <span>{activeLayer.properties.offsetX ?? 0}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-200"
-                        max="200"
-                        step="2"
-                        value={activeLayer.properties.offsetX ?? 0}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'offsetX',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
-                      />
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Scala</span>
+                      <span>{(Number(patLayer.properties.patternScale ?? 1.0)).toFixed(1)}x</span>
                     </div>
-                    <div>
-                      <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
-                        <span>Offset Y</span>
-                        <span>{activeLayer.properties.offsetY ?? 20}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-200"
-                        max="200"
-                        step="2"
-                        value={activeLayer.properties.offsetY ?? 20}
-                        oninput={(e) =>
-                          studio.updateLayerProperty(
-                            activeLayer.id,
-                            'offsetY',
-                            parseInt((e.target as HTMLInputElement).value, 10)
-                          )}
-                        class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            {:else if activeLayer.type === 'TEXT_NAME'}
-              <div class="space-y-3 pt-2 border-t border-[#2E3D56]">
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label for="player-name-input" class="block text-xs text-[#94A3B8] mb-1">
-                      Nome Dorsale
-                    </label>
                     <input
-                      id="player-name-input"
-                      type="text"
-                      maxlength="16"
-                      value={activeLayer.properties.text ?? 'ROSSI'}
-                      oninput={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'text',
-                          (e.target as HTMLInputElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      type="range"
+                      min="0.3"
+                      max="3.0"
+                      step="0.1"
+                      value={patLayer.properties.patternScale ?? 1.0}
+                      oninput={(e) => studio.updateLayerProperty(patLayer.id, 'patternScale', parseFloat((e.target as HTMLInputElement).value))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                     />
                   </div>
 
                   <div>
                     <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                      <span>Arco Curvatura</span>
-                      <span>
-                        {Number(activeLayer.properties.curveRadius ?? 680) === 0
-                          ? 'Dritto'
-                          : `${activeLayer.properties.curveRadius ?? 680}px`}
-                      </span>
+                      <span>Rotazione</span>
+                      <span>{patLayer.properties.patternRotation ?? 0}°</span>
                     </div>
                     <input
                       type="range"
                       min="0"
-                      max="1100"
-                      step="50"
-                      value={activeLayer.properties.curveRadius ?? 680}
-                      oninput={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'curveRadius',
-                          parseInt((e.target as HTMLInputElement).value, 10)
-                        )}
+                      max="360"
+                      step="5"
+                      value={patLayer.properties.patternRotation ?? 0}
+                      oninput={(e) => studio.updateLayerProperty(patLayer.id, 'patternRotation', parseInt((e.target as HTMLInputElement).value, 10))}
                       class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                     />
                   </div>
                 </div>
-              </div>
-            {:else if activeLayer.type === 'NUMBER'}
-              <div class="space-y-3 pt-2 border-t border-[#2E3D56]">
-                <div class="grid grid-cols-2 gap-3 items-center">
+
+                <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label for="kit-number-input" class="block text-xs text-[#94A3B8] mb-1">
-                      Numero Gara (1–99)
-                    </label>
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Frequenza / Righe</span>
+                      <span>{patLayer.properties.stripeCount ?? 5}</span>
+                    </div>
                     <input
-                      id="kit-number-input"
-                      type="text"
-                      maxlength="2"
-                      value={activeLayer.properties.numberText ?? '10'}
-                      oninput={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'numberText',
-                          (e.target as HTMLInputElement).value
-                        )}
-                      class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      type="range"
+                      min="1"
+                      max="16"
+                      step="1"
+                      value={patLayer.properties.stripeCount ?? 5}
+                      oninput={(e) => studio.updateLayerProperty(patLayer.id, 'stripeCount', parseInt((e.target as HTMLInputElement).value, 10))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                     />
                   </div>
 
-                  <label class="flex items-center gap-2 text-xs text-white cursor-pointer pt-4">
+                  <div>
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Spessore / Densitá</span>
+                      <span>{Math.round(Number(patLayer.properties.stripeWidth ?? 0.48) * 100)}%</span>
+                    </div>
                     <input
-                      type="checkbox"
-                      checked={Boolean(activeLayer.properties.showFrontNumber ?? true)}
-                      onchange={(e) =>
-                        studio.updateLayerProperty(
-                          activeLayer.id,
-                          'showFrontNumber',
-                          (e.target as HTMLInputElement).checked
-                        )}
-                      class="accent-[#00C49F]"
+                      type="range"
+                      min="0.10"
+                      max="0.90"
+                      step="0.02"
+                      value={patLayer.properties.stripeWidth ?? 0.48}
+                      oninput={(e) => studio.updateLayerProperty(patLayer.id, 'stripeWidth', parseFloat((e.target as HTMLInputElement).value))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
                     />
-                    Numero anche Frontale
-                  </label>
+                  </div>
                 </div>
 
-                <div>
-                  <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                    <span>Contorno Vettoriale</span>
-                    <span>{activeLayer.properties.strokeWidth ?? 12}px</span>
+                <!-- Blend Mode & Opacity -->
+                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-[#2E3D56]">
+                  <div>
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Opacità</span>
+                      <span>{patLayer.opacity.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={patLayer.opacity}
+                      oninput={(e) => studio.setLayerOpacity(patLayer.id, parseFloat((e.target as HTMLInputElement).value))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="24"
-                    step="1"
-                    value={activeLayer.properties.strokeWidth ?? 12}
-                    oninput={(e) =>
-                      studio.updateLayerProperty(
-                        activeLayer.id,
-                        'strokeWidth',
-                        parseInt((e.target as HTMLInputElement).value, 10)
-                      )}
-                    class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                  />
+
+                  <div>
+                    <label for="pattern-blend-tab" class="block text-xs text-[#94A3B8] mb-1">Fusione (Blend)</label>
+                    <select
+                      id="pattern-blend-tab"
+                      value={patLayer.blendMode}
+                      onchange={(e) => studio.setLayerBlendMode(patLayer.id, (e.target as HTMLSelectElement).value as BlendMode)}
+                      class="w-full px-2.5 py-1.5 text-xs font-semibold bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                    >
+                      {#each blendModes as bm (bm.value)}
+                        <option value={bm.value}>{bm.label}</option>
+                      {/each}
+                    </select>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Color Picker for Pattern -->
+              <div class="space-y-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
+                  Colori del Pattern:
+                </span>
+                <ColorPickerHsv
+                  activeHex={patLayer.color}
+                  secondaryHex={patLayer.secondaryColor}
+                  hasSecondary={true}
+                  onColorChange={(hex, isSec, commit) =>
+                    studio.updateLayerColor(patLayer.id, hex, isSec, commit)}
+                />
               </div>
             {/if}
           </div>
-
-          <!-- HSV + HEX Color Picker with Recent 8 Colors -->
-          <ColorPickerHsv
-            activeHex={activeLayer.color}
-            secondaryHex={activeLayer.secondaryColor}
-            hasSecondary={true}
-            onColorChange={(hex, isSec, commit) =>
-              studio.updateLayerColor(activeLayer.id, hex, isSec, commit)}
-          />
         {/if}
 
-        <!-- Material & Fabric Engine Card (STEP 3) -->
-        <div class="p-4 rounded-xl border border-[#2E3D56] bg-[#0F141C] space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-white flex items-center gap-1.5">
-              <span>🎽</span> Tessuto & Materiale PBR
-            </span>
-            <span class="text-[11px] font-mono-tabular px-2 py-0.5 rounded-full bg-[#1A2230] text-[#00C49F] border border-[#2E3D56]">
-              {fabricPresets.find(f => f.type === studio.fabricType)?.label ?? 'Mesh'}
-            </span>
-          </div>
-
-          <p class="text-[11px] text-[#94A3B8] leading-relaxed">
-            Scegli la trama fisica e il comportamento riflettente del tessuto per il rendering 3D in tempo reale.
-          </p>
-
-          <div class="grid grid-cols-2 gap-2">
-            {#each fabricPresets as preset (preset.type)}
-              {@const isSelected = studio.fabricType === preset.type}
+        <!-- TAB 3: STEMMI & SPONSOR -->
+        {#if activeEditorTab === 'LOGOS'}
+          <div class="p-4 space-y-4 max-h-[calc(100vh-210px)] overflow-y-auto">
+            <!-- Sub-navigation for Logos -->
+            <div class="grid grid-cols-3 gap-1.5 p-1 bg-[#0F141C] border border-[#2E3D56] rounded-lg">
               <button
                 type="button"
-                onclick={() => studio.setFabricType(preset.type)}
-                class="p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 {isSelected
-                  ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/40'
-                  : 'bg-[#1A2230] border-[#2E3D56] hover:border-[#64748B]'}"
+                onclick={() => {
+                  activeLogoSubTab = 'BADGE';
+                  getOrCreateLayer('BADGE');
+                }}
+                class="py-2 text-xs font-bold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 {activeLogoSubTab === 'BADGE'
+                  ? 'bg-[#0F52BA] text-white shadow-sm'
+                  : 'text-[#94A3B8] hover:text-white'}"
               >
-                <div class="flex items-center justify-between">
-                  <span class="text-sm">{preset.icon}</span>
-                  <span class="text-[10px] font-mono-tabular text-[#94A3B8]">
-                    R:{preset.roughness.toFixed(2)}
-                  </span>
-                </div>
-                <span class="text-xs font-semibold {isSelected ? 'text-[#00C49F]' : 'text-white'}">
-                  {preset.label}
-                </span>
-                <span class="text-[10px] text-[#94A3B8] line-clamp-2">
-                  {preset.desc}
-                </span>
+                <span>🛡️</span>
+                <span>Stemma</span>
               </button>
-            {/each}
+
+              <button
+                type="button"
+                onclick={() => {
+                  activeLogoSubTab = 'SPONSOR';
+                  getOrCreateLayer('SPONSOR');
+                }}
+                class="py-2 text-xs font-bold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 {activeLogoSubTab === 'SPONSOR'
+                  ? 'bg-[#0F52BA] text-white shadow-sm'
+                  : 'text-[#94A3B8] hover:text-white'}"
+              >
+                <span>⭐</span>
+                <span>Sponsor</span>
+              </button>
+
+              <button
+                type="button"
+                onclick={() => {
+                  activeLogoSubTab = 'NUMBER';
+                  getOrCreateLayer('NUMBER');
+                }}
+                class="py-2 text-xs font-bold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 {activeLogoSubTab === 'NUMBER'
+                  ? 'bg-[#0F52BA] text-white shadow-sm'
+                  : 'text-[#94A3B8] hover:text-white'}"
+              >
+                <span>🔢</span>
+                <span>Nome & N°</span>
+              </button>
+            </div>
+
+            <!-- Active Logo Inspector Content -->
+            {#if activeLogoSubTab === 'BADGE'}
+              {@const activeLayer = badgeLayer || getOrCreateLayer('BADGE')}
+              {#if activeLayer}
+                <div class="space-y-3">
+                  <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
+                    <div>
+                      <label for="badge-shape-tab" class="block text-xs text-[#94A3B8] mb-1">Sagoma Stemma</label>
+                      <select
+                        id="badge-shape-tab"
+                        value={activeLayer.properties.badgeShape || 'HEXAGON_PRO'}
+                        onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'badgeShape', (e.target as HTMLSelectElement).value)}
+                        class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      >
+                        {#each badgeShapes as bs (bs.value)}
+                          <option value={bs.value}>{bs.label}</option>
+                        {/each}
+                      </select>
+                    </div>
+                    <div>
+                      <label for="badge-pos-tab" class="block text-xs text-[#94A3B8] mb-1">Posizione Petto</label>
+                      <select
+                        id="badge-pos-tab"
+                        value={activeLayer.properties.badgePosition || 'LEFT_CHEST'}
+                        onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'badgePosition', (e.target as HTMLSelectElement).value)}
+                        class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      >
+                        {#each badgePositions as bp (bp.value)}
+                          <option value={bp.value}>{bp.label}</option>
+                        {/each}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Snapping Pad -->
+                  <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>🧲</span>
+                        <span>Allineamento Magnetico 1-Click</span>
+                      </span>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] font-mono-tabular border border-[#38BDF8]/30">Guida Attiva</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('CREST_LEFT')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#00C49F] border border-[#2E3D56] cursor-pointer"
+                      >
+                        🛡️ Cuore SX
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('CHEST_CENTER')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
+                      >
+                        🎯 Centro
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('CREST_RIGHT')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#94A3B8] border border-[#2E3D56] cursor-pointer"
+                      >
+                        🛡️ Petto DX
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('COLLAR')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
+                      >
+                        👔 Colletto
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('RESET')}
+                        class="col-span-2 px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#EF4444] border border-[#2E3D56] cursor-pointer"
+                      >
+                        ↺ Reset (0, 0)
+                      </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
+                          <span>Offset X</span>
+                          <span>{activeLayer.properties.offsetX ?? 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-200"
+                          max="200"
+                          step="2"
+                          value={activeLayer.properties.offsetX ?? 0}
+                          oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'offsetX', parseInt((e.target as HTMLInputElement).value, 10))}
+                          class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
+                        />
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
+                          <span>Offset Y</span>
+                          <span>{activeLayer.properties.offsetY ?? 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-200"
+                          max="200"
+                          step="2"
+                          value={activeLayer.properties.offsetY ?? 0}
+                          oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'offsetY', parseInt((e.target as HTMLInputElement).value, 10))}
+                          class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Color Picker for Badge -->
+                  <div class="space-y-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Colori Stemma:</span>
+                    <ColorPickerHsv
+                      activeHex={activeLayer.color}
+                      secondaryHex={activeLayer.secondaryColor}
+                      hasSecondary={true}
+                      onColorChange={(hex, isSec, commit) => studio.updateLayerColor(activeLayer.id, hex, isSec, commit)}
+                    />
+                  </div>
+                </div>
+              {/if}
+            {:else if activeLogoSubTab === 'SPONSOR'}
+              {@const activeLayer = sponsorLayer || getOrCreateLayer('SPONSOR')}
+              {#if activeLayer}
+                <div class="space-y-3">
+                  <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
+                    <div>
+                      <label for="sponsor-label-tab" class="block text-xs text-[#94A3B8] mb-1">Testo Marchio</label>
+                      <input
+                        id="sponsor-label-tab"
+                        type="text"
+                        maxlength="14"
+                        value={activeLayer.properties.sponsorLabel ?? 'AERO·LAB'}
+                        oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'sponsorLabel', (e.target as HTMLInputElement).value)}
+                        class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label for="sponsor-geom-tab" class="block text-xs text-[#94A3B8] mb-1">Motivo Geometrico</label>
+                      <select
+                        id="sponsor-geom-tab"
+                        value={activeLayer.properties.sponsorGeometry || 'HEX_TECH_BAR'}
+                        onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'sponsorGeometry', (e.target as HTMLSelectElement).value)}
+                        class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      >
+                        {#each sponsorGeometries as sg (sg.value)}
+                          <option value={sg.value}>{sg.label}</option>
+                        {/each}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Sponsor Snapping Pad -->
+                  <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>🧲</span>
+                        <span>Allineamento Sponsor 1-Click</span>
+                      </span>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] font-mono-tabular border border-[#38BDF8]/30">Guida Attiva</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('CHEST_CENTER')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
+                      >
+                        🎯 Centro Petto
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('SPONSOR')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#00C49F] border border-[#2E3D56] cursor-pointer"
+                      >
+                        ⭐ Standard
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('COLLAR')}
+                        class="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#38BDF8] border border-[#2E3D56] cursor-pointer"
+                      >
+                        👔 Colletto
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => applyQuickSnap('RESET')}
+                        class="col-span-3 px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-[#1A2230] hover:bg-[#253146] text-[#EF4444] border border-[#2E3D56] cursor-pointer"
+                      >
+                        ↺ Centra Posizione
+                      </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
+                          <span>Offset X</span>
+                          <span>{activeLayer.properties.offsetX ?? 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-200"
+                          max="200"
+                          step="2"
+                          value={activeLayer.properties.offsetX ?? 0}
+                          oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'offsetX', parseInt((e.target as HTMLInputElement).value, 10))}
+                          class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
+                        />
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-[11px] text-[#94A3B8] font-mono-tabular mb-1">
+                          <span>Offset Y</span>
+                          <span>{activeLayer.properties.offsetY ?? 20}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-200"
+                          max="200"
+                          step="2"
+                          value={activeLayer.properties.offsetY ?? 20}
+                          oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'offsetY', parseInt((e.target as HTMLInputElement).value, 10))}
+                          class="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#38BDF8]"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-[#2E3D56]">
+                      <label for="sponsor-blend-tab" class="block text-xs text-[#94A3B8] mb-1">Fusione Sponsor (Blend Mode)</label>
+                      <select
+                        id="sponsor-blend-tab"
+                        value={activeLayer.blendMode}
+                        onchange={(e) => studio.setLayerBlendMode(activeLayer.id, (e.target as HTMLSelectElement).value as BlendMode)}
+                        class="w-full px-2.5 py-1.5 text-xs font-semibold bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                      >
+                        {#each blendModes as bm (bm.value)}
+                          <option value={bm.value}>{bm.label}</option>
+                        {/each}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Color Picker for Sponsor -->
+                  <div class="space-y-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Colori Sponsor:</span>
+                    <ColorPickerHsv
+                      activeHex={activeLayer.color}
+                      secondaryHex={activeLayer.secondaryColor}
+                      hasSecondary={true}
+                      onColorChange={(hex, isSec, commit) => studio.updateLayerColor(activeLayer.id, hex, isSec, commit)}
+                    />
+                  </div>
+                </div>
+              {/if}
+            {:else}
+              {@const numLayer = numberLayer || getOrCreateLayer('NUMBER')}
+              {@const nmLayer = nameLayer}
+              <div class="space-y-3">
+                <!-- Name & Number Inputs -->
+                <div class="p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl space-y-3">
+                  {#if nmLayer}
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label for="p-name-tab" class="block text-xs text-[#94A3B8] mb-1">Nome Dorsale</label>
+                        <input
+                          id="p-name-tab"
+                          type="text"
+                          maxlength="16"
+                          value={nmLayer.properties.text ?? 'ROSSI'}
+                          oninput={(e) => studio.updateLayerProperty(nmLayer.id, 'text', (e.target as HTMLInputElement).value)}
+                          class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                          <span>Curvatura Arco</span>
+                          <span>{nmLayer.properties.curveRadius ?? 680}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1100"
+                          step="50"
+                          value={nmLayer.properties.curveRadius ?? 680}
+                          oninput={(e) => studio.updateLayerProperty(nmLayer.id, 'curveRadius', parseInt((e.target as HTMLInputElement).value, 10))}
+                          class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
+                        />
+                      </div>
+                    </div>
+                  {/if}
+
+                  {#if numLayer}
+                    <div class="grid grid-cols-2 gap-3 items-center pt-2 border-t border-[#2E3D56]">
+                      <div>
+                        <label for="num-tab" class="block text-xs text-[#94A3B8] mb-1">Numero Gara (1–99)</label>
+                        <input
+                          id="num-tab"
+                          type="text"
+                          maxlength="2"
+                          value={numLayer.properties.numberText ?? '10'}
+                          oninput={(e) => studio.updateLayerProperty(numLayer.id, 'numberText', (e.target as HTMLInputElement).value)}
+                          class="w-full px-2.5 py-1.5 text-xs font-mono-tabular bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white font-bold"
+                        />
+                      </div>
+
+                      <label class="flex items-center gap-2 text-xs text-white cursor-pointer pt-4">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(numLayer.properties.showFrontNumber ?? true)}
+                          onchange={(e) => studio.updateLayerProperty(numLayer.id, 'showFrontNumber', (e.target as HTMLInputElement).checked)}
+                          class="accent-[#00C49F]"
+                        />
+                        Numero Frontale
+                      </label>
+                    </div>
+
+                    <div>
+                      <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                        <span>Contorno Vettoriale</span>
+                        <span>{numLayer.properties.strokeWidth ?? 12}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="24"
+                        step="1"
+                        value={numLayer.properties.strokeWidth ?? 12}
+                        oninput={(e) => studio.updateLayerProperty(numLayer.id, 'strokeWidth', parseInt((e.target as HTMLInputElement).value, 10))}
+                        class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
+                      />
+                    </div>
+                  {/if}
+                </div>
+
+                {#if numLayer}
+                  <!-- Color Picker for Number & Name -->
+                  <div class="space-y-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Colori Nome & Numero:</span>
+                    <ColorPickerHsv
+                      activeHex={numLayer.color}
+                      secondaryHex={numLayer.secondaryColor}
+                      hasSecondary={true}
+                      onColorChange={(hex, isSec, commit) => {
+                        studio.updateLayerColor(numLayer.id, hex, isSec, commit);
+                        if (nmLayer) {
+                          studio.updateLayerColor(nmLayer.id, hex, isSec, commit);
+                        }
+                      }}
+                    />
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
-        </div>
+        {/if}
+
+        <!-- TAB 4: TUTTI I LIVELLI -->
+        {#if activeEditorTab === 'LAYERS'}
+          <div class="p-4 space-y-4 max-h-[calc(100vh-210px)] overflow-y-auto">
+            <!-- Header with Add Layer button -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white">
+                Pila Livelli ({studio.activeLayers.length})
+              </span>
+              <button
+                type="button"
+                onclick={() => studio.addNewLayer(studio.selectedLayer?.type || 'PATTERN')}
+                class="px-2.5 py-1 text-xs font-semibold text-[#00C49F] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
+              >
+                + Nuovo Livello
+              </button>
+            </div>
+
+            <!-- Draggable / Reorderable Layer List -->
+            <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {#each [...studio.activeLayers].sort((a, b) => b.zIndex - a.zIndex) as layer (layer.id)}
+                {@const isCurrent = studio.selectedLayer?.id === layer.id}
+                <div
+                  class="flex items-center justify-between gap-2.5 p-3 rounded-xl border shadow-sm transition-all {isCurrent
+                    ? 'bg-[#253146] border-[#00C49F] shadow-md ring-1 ring-[#00C49F]/30'
+                    : 'bg-[#0F141C] border-[#2E3D56] hover:border-[#64748B]'}"
+                >
+                  <button
+                    type="button"
+                    onclick={() => (studio.selectedLayerId = layer.id)}
+                    class="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+                  >
+                    <span
+                      class="w-6 h-6 rounded-md border border-white/30 shrink-0 shadow-sm flex items-center justify-center text-xs"
+                      style="background-color: {layer.color};"
+                    >
+                      {getLayerIcon(layer.type)}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                        <span>{layer.name}</span>
+                        <span class="text-[9px] px-1 py-0.2 rounded bg-[#0F141C] text-[#00C49F] font-mono-tabular border border-[#2E3D56]">z:{layer.zIndex}</span>
+                      </div>
+                      <div class="text-[10px] text-[#94A3B8] font-mono-tabular">
+                        {layer.type} · {Math.round(layer.opacity * 100)}%
+                      </div>
+                    </div>
+                  </button>
+
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onclick={() => studio.toggleLayerVisibility(layer.id)}
+                      class="px-2 py-0.5 text-[10px] font-mono-tabular font-semibold rounded transition-colors {layer.visible
+                        ? 'bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40'
+                        : 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40'} cursor-pointer"
+                    >
+                      {layer.visible ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => studio.moveLayerZIndex(layer.id, 'UP')}
+                      class="w-6 h-6 flex items-center justify-center rounded bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
+                      title="Sposta su"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => studio.moveLayerZIndex(layer.id, 'DOWN')}
+                      class="w-6 h-6 flex items-center justify-center rounded bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#2E3D56] cursor-pointer text-xs font-bold"
+                      title="Sposta giù"
+                    >
+                      ↓
+                    </button>
+                    {#if studio.activeLayers.length > 1}
+                      <button
+                        type="button"
+                        onclick={() => studio.deleteLayer(layer.id)}
+                        class="w-6 h-6 flex items-center justify-center rounded bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/40 cursor-pointer text-xs"
+                        title="Elimina livello"
+                      >
+                        ✕
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            <!-- Inspector for Selected Layer -->
+            {#if studio.selectedLayer}
+              {@const activeLayer = studio.selectedLayer}
+              <div class="bg-[#0F141C] border border-[#2E3D56] rounded-xl p-3.5 space-y-3">
+                <div class="flex items-center justify-between gap-2 border-b border-[#2E3D56] pb-2">
+                  <input
+                    type="text"
+                    value={activeLayer.name}
+                    oninput={(e) => {
+                      activeLayer.name = (e.target as HTMLInputElement).value;
+                      studio.textureRevision++;
+                    }}
+                    class="text-xs font-semibold text-white bg-transparent border-b border-transparent focus:border-[#00C49F] focus:outline-none flex-1"
+                  />
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Opacità</span>
+                      <span>{activeLayer.opacity.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={activeLayer.opacity}
+                      oninput={(e) => studio.setLayerOpacity(activeLayer.id, parseFloat((e.target as HTMLInputElement).value))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="layer-blend-select" class="block text-xs text-[#94A3B8] mb-1">Metodo Fusione</label>
+                    <select
+                      id="layer-blend-select"
+                      value={activeLayer.blendMode}
+                      onchange={(e) => studio.setLayerBlendMode(activeLayer.id, (e.target as HTMLSelectElement).value as BlendMode)}
+                      class="w-full px-2.5 py-1.5 text-xs font-semibold bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white focus:outline-none focus:border-[#00C49F]"
+                    >
+                      {#each blendModes as bm (bm.value)}
+                        <option value={bm.value}>{bm.label}</option>
+                      {/each}
+                    </select>
+                  </div>
+                </div>
+
+                <ColorPickerHsv
+                  activeHex={activeLayer.color}
+                  secondaryHex={activeLayer.secondaryColor}
+                  hasSecondary={true}
+                  onColorChange={(hex, isSec, commit) => studio.updateLayerColor(activeLayer.id, hex, isSec, commit)}
+                />
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
-    </div>
     {/if}
 
     <!-- Right Column: 2D Texture Canvas (2048x2048) & 3D PBR Viewport (lg:col-span-8 or col-span-12) -->

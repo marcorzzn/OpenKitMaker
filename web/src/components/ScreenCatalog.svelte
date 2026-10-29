@@ -54,14 +54,14 @@
   <!-- Header & Search / Filter Bar (SCR-CATALOG) -->
   <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[#2E3D56] pb-6">
     <div class="space-y-2">
-      <div class="text-xs text-[#94A3B8] font-mono-tabular">
-        SCR-CATALOG · FUN-SELECT-TEMPLATE · 100% Vettoriale & Procedurale
+      <div class="text-xs text-[#00C49F] font-mono-tabular">
+        ⚡ ISPIRAZIONE & MODELLI CLASSICI
       </div>
       <h1 class="text-3xl sm:text-4xl font-bold font-display tracking-wide text-white">
         {i18n.catalog.title}
       </h1>
       <p class="text-sm text-[#94A3B8]">
-        Seleziona un modello base per clonare i livelli con nuovo UUIDv4 e aprire lo Studio Grafico.
+        Scegli una base di partenza per iniziare a personalizzare colori, trame geometriche, colletto e stemmi nel configuratore 3D.
       </p>
     </div>
 

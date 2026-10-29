@@ -68,7 +68,7 @@
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#2E3D56] pb-6">
     <div class="space-y-1.5">
       <div class="text-xs text-[#94A3B8] font-mono-tabular">
-        SCR-SAVED · FUN-SAVE-LOCAL · Persistenza IndexedDB (Dexie.js)
+        📁 I TUOI PROGETTI · Sempre disponibili offline
       </div>
       <h1 class="text-3xl sm:text-4xl font-bold font-display tracking-wide text-white">
         {i18n.saved.title} ({studio.savedKits.length})
