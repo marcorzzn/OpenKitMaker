@@ -8,6 +8,9 @@ import type {
   Template,
   EditorViewMode,
   LightingPreset,
+  ViewportBackground,
+  CameraPreset,
+  FabricType,
   GarmentType,
   Garment,
 } from '../types/kit';
@@ -50,6 +53,9 @@ class OpenKitMakerStudioStore {
   // Editor View & 3D state
   editorViewMode = $state<EditorViewMode>('SPLIT');
   lightingPreset = $state<LightingPreset>('studio');
+  viewportBackground = $state<ViewportBackground>('dark');
+  fabricType = $state<FabricType>('MESH');
+  showAnatomicalView = $state<boolean>(false);
   showUvGuides = $state<boolean>(false);
   textureRevision = $state<number>(0);
   lastCompositeTimeMs = $state<number>(4.2);
@@ -194,6 +200,37 @@ class OpenKitMakerStudioStore {
     this.textureRevision++;
   }
 
+  toggleAnatomicalView(): void {
+    this.showAnatomicalView = !this.showAnatomicalView;
+    if (this.activeKit?.metadata) {
+      this.activeKit.metadata.showAnatomicalView = this.showAnatomicalView;
+    }
+  }
+
+  setViewportBackground(bg: ViewportBackground): void {
+    this.viewportBackground = bg;
+    if (this.activeKit?.metadata) {
+      this.activeKit.metadata.viewportBackground = bg;
+    }
+  }
+
+  setFabricType(fabric: FabricType): void {
+    this.fabricType = fabric;
+    if (this.activeKit?.metadata) {
+      this.activeKit.metadata.fabricType = fabric;
+    }
+    this.textureRevision++;
+    const label = fabric === 'MESH' ? 'Mesh Traspirante' : fabric === 'POLYESTER' ? 'Poliestere Lucido' : fabric === 'COTTON' ? "Cotone Anni '90" : 'Jacquard Nobile';
+    this.notify('info', `Tessuto 3D impostato su: ${label}.`);
+  }
+
+  setLightingPreset(preset: LightingPreset): void {
+    this.lightingPreset = preset;
+    if (this.activeKit?.metadata) {
+      this.activeKit.metadata.lightingPreset = preset;
+    }
+  }
+
   toggleMannequin(): void {
     this.showMannequin = !this.showMannequin;
   }
@@ -220,6 +257,7 @@ class OpenKitMakerStudioStore {
     this.activeGarmentType = 'JERSEY';
     this.selectedLayerId = cloned.layers[0]?.id || '';
     this.lightingPreset = cloned.metadata?.lightingPreset || 'studio';
+    this.fabricType = cloned.metadata?.fabricType || 'MESH';
     this.textureRevision++;
     this.currentScreen = targetScreen;
   }

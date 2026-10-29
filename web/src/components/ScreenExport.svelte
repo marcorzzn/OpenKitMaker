@@ -1,4 +1,4 @@
-// Implements: SCR-EXPORT / FUN-EXPORT-PNG, FUN-EXPORT-ZIP, FUN-EXPORT-SINGLE
+// Implements: SCR-EXPORT / FUN-EXPORT-PNG, FUN-EXPORT-ZIP, FUN-EXPORT-SINGLE, STEP 4
 <script lang="ts">
   import { onMount } from 'svelte';
   import { studio } from '../state/studio.svelte';
@@ -8,20 +8,23 @@
     renderFullKitMockup512,
   } from '../lib/compositor2d';
   import {
-    exportGarmentPng2048,
+    exportGarmentPng,
     exportKitInteroperableZip,
+    exportKitPbrBundleZip,
+    exportKitGlb,
     importKitFromZip,
   } from '../lib/exporter';
   import { saveKitToDb, loadAllKitsFromDb } from '../lib/db';
-  import type { KitManifestV1, GarmentType } from '../types/kit';
+  import type { KitManifestV1, GarmentType, ExportResolution } from '../types/kit';
 
   let flatTextureCanvas = $state<HTMLCanvasElement | null>(null);
   let fullKitPreviewCanvas = $state<HTMLCanvasElement | null>(null);
   let activePreviewGarment = $state<GarmentType>('JERSEY');
+  let selectedResolution = $state<ExportResolution>(2048);
   let exportProgress = $state<number>(0);
   let isExporting = $state<boolean>(false);
   let lastExportSummary = $state<{
-    type: 'PNG' | 'ZIP';
+    type: 'PNG' | 'ZIP' | 'PBR' | 'GLB';
     filename: string;
     sha256?: string;
     sizeKb?: number;
@@ -50,9 +53,10 @@
     isExporting = true;
     exportProgress = 10;
     try {
-      const { bytes, sha256, filename } = await exportGarmentPng2048(
+      const { bytes, sha256, filename } = await exportGarmentPng(
         studio.activeKit,
         garmentType,
+        selectedResolution,
         (pct) => {
           exportProgress = pct;
         }
@@ -65,7 +69,7 @@
       };
       studio.notify(
         'success',
-        `Texture PNG 2048×2048 (${garmentType}) esportata con successo.`
+        `Texture PNG ${selectedResolution}×${selectedResolution} (${garmentType}) esportata con successo.`
       );
     } catch {
       studio.notify('error', i18n.errors.export_failed);
@@ -95,6 +99,60 @@
       studio.notify(
         'success',
         `Archivio Full Kit kit_${studio.activeKit.id.slice(0, 8)}.zip generato (Maglia, Shorts, Calzettoni, Manifest).`
+      );
+    } catch {
+      studio.notify('error', i18n.errors.export_failed);
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  async function handleExportPbrBundle() {
+    if (isExporting) return;
+    isExporting = true;
+    exportProgress = 5;
+    try {
+      const { zipSizeBytes, filename } = await exportKitPbrBundleZip(
+        studio.activeKit,
+        (pct) => {
+          exportProgress = pct;
+        }
+      );
+      lastExportSummary = {
+        type: 'PBR',
+        filename,
+        sizeKb: Math.round(zipSizeBytes / 1024),
+      };
+      studio.notify(
+        'success',
+        `Bundle Materiali PBR ${filename} generato (Albedo, Normal, Roughness, Metallic).`
+      );
+    } catch {
+      studio.notify('error', i18n.errors.export_failed);
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  async function handleExportGlb() {
+    if (isExporting) return;
+    isExporting = true;
+    exportProgress = 5;
+    try {
+      const { blob, filename } = await exportKitGlb(
+        studio.activeKit,
+        (pct) => {
+          exportProgress = pct;
+        }
+      );
+      lastExportSummary = {
+        type: 'GLB',
+        filename,
+        sizeKb: Math.round(blob.size / 1024),
+      };
+      studio.notify(
+        'success',
+        `Modello 3D ${filename} (.glb) esportato con texture e materiali integrati.`
       );
     } catch {
       studio.notify('error', i18n.errors.export_failed);
@@ -137,7 +195,7 @@
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#2E3D56] pb-6">
     <div class="space-y-1.5">
       <div class="text-xs text-[#94A3B8] font-mono-tabular">
-        SCR-EXPORT · FUN-EXPORT-PNG · FUN-EXPORT-ZIP · FUN-EXPORT-SINGLE · Full Kit
+        SCR-EXPORT · 2D 2K/4K · PBR BUNDLE · 3D GLB · UNIVERSAL EXPORT
       </div>
       <h1 class="text-3xl sm:text-4xl font-bold font-display tracking-wide text-white">
         {i18n.export.title}
@@ -145,6 +203,9 @@
       <p class="text-sm text-[#94A3B8]">
         Kit attivo: <span class="text-white font-semibold">{studio.activeKit.name}</span>
         <span class="font-mono-tabular text-xs text-[#64748B]">({studio.activeKit.id})</span>
+        <span class="ml-2 px-2 py-0.5 rounded-full bg-[#1A2230] text-[#00C49F] text-xs font-mono-tabular border border-[#2E3D56]">
+          Tessuto: {studio.fabricType}
+        </span>
       </p>
     </div>
 
@@ -249,7 +310,7 @@
       <div class="flex items-center justify-between text-xs font-mono-tabular">
         <span class="text-white">
           {isExporting
-            ? 'Compositing multi-texture 2048×2048, calcolo SHA-256 e compressione in corso…'
+            ? 'Elaborazione in corso: upscaling vettoriale, bundling PBR o compilazione GLB 3D…'
             : 'Operazione di esportazione completata al 100%'}
         </span>
         <span class="text-[#00C49F] font-semibold">{exportProgress}%</span>
@@ -263,17 +324,37 @@
     </div>
   {/if}
 
-  <!-- Output Options: Singolo Capo PNG vs Interoperable Full Kit ZIP -->
+  <!-- Universal Export Grid: 4 Formati Professionali (STEP 4) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Option 1: Singolo Capo PNG (FUN-EXPORT-PNG, FUN-EXPORT-SINGLE) -->
+    <!-- Format 1: Texture 2D ad Altissima Risoluzione (2K / 4K) -->
     <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-6 flex flex-col justify-between space-y-5">
-      <div class="space-y-2">
-        <div class="text-xs text-[#94A3B8] font-mono-tabular">FUN-EXPORT-SINGLE · Output Diretto Singolo Capo</div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#94A3B8] font-mono-tabular">EXPORT 2D · PNG LOSSLESS</div>
+          <!-- Resolution Selector -->
+          <div class="flex items-center gap-1 bg-[#0F141C] p-1 rounded-lg border border-[#2E3D56]">
+            <button
+              type="button"
+              onclick={() => selectedResolution = 2048}
+              class="px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer {selectedResolution === 2048 ? 'bg-[#0F52BA] text-white font-semibold' : 'text-[#94A3B8] hover:text-white'}"
+            >
+              2K (2048)
+            </button>
+            <button
+              type="button"
+              onclick={() => selectedResolution = 4096}
+              class="px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer {selectedResolution === 4096 ? 'bg-[#00C49F] text-[#0F141C] font-bold' : 'text-[#94A3B8] hover:text-white'}"
+            >
+              ✨ 4K Ultra HD
+            </button>
+          </div>
+        </div>
+
         <h2 class="text-2xl font-bold font-display tracking-wide text-white">
-          Esporta Singola Texture PNG
+          Esporta Texture 2D ({selectedResolution}×{selectedResolution})
         </h2>
         <p class="text-sm text-[#94A3B8] leading-relaxed">
-          Scarica la texture lossless 2048×2048 ad alta definizione del capo selezionato, pronta per mod PES, eFootball o render 3D esterni.
+          Scarica la texture grafica lossless in formato <strong>{selectedResolution === 4096 ? '4K Ultra HD (4096×4096)' : '2K Standard (2048×2048)'}</strong> con campionamento ad alta fedeltà, ideale per videogame, stampa o mockup.
         </p>
       </div>
 
@@ -284,7 +365,7 @@
           onclick={() => handleExportSingleGarment('JERSEY')}
           class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
         >
-          👕 Maglia PNG
+          👕 Maglia {selectedResolution === 4096 ? '4K' : '2K'}
         </button>
         <button
           type="button"
@@ -292,7 +373,7 @@
           onclick={() => handleExportSingleGarment('SHORTS')}
           class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
         >
-          🩳 Shorts PNG
+          🩳 Shorts {selectedResolution === 4096 ? '4K' : '2K'}
         </button>
         <button
           type="button"
@@ -300,16 +381,16 @@
           onclick={() => handleExportSingleGarment('SOCKS')}
           class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
         >
-          🧦 Calze PNG
+          🧦 Calze {selectedResolution === 4096 ? '4K' : '2K'}
         </button>
       </div>
     </div>
 
-    <!-- Option 2: Interoperable Full Kit ZIP Archive (FUN-EXPORT-ZIP) -->
-    <div class="bg-[#1A2230] border border-[#00C49F]/50 rounded-xl p-6 flex flex-col justify-between space-y-5">
+    <!-- Format 2: Interoperable Full Kit ZIP Archive (FUN-EXPORT-ZIP) -->
+    <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-6 flex flex-col justify-between space-y-5">
       <div class="space-y-2">
         <div class="text-xs text-[#00C49F] font-mono-tabular">
-          FUN-EXPORT-ZIP · Contratto Full Kit Web ↔ Android
+          INTEROPERABILE · CROSS-PLATFORM WEB ↔ ANDROID
         </div>
         <h2 class="text-2xl font-bold font-display tracking-wide text-white">
           {i18n.export.option_zip_title}
@@ -328,7 +409,64 @@
         onclick={handleExportZip}
         class="w-full py-3 px-5 text-sm font-semibold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
       >
-        Esporta Archivio Full Kit (kit_{studio.activeKit.id.slice(0, 8)}.zip)
+        📦 Esporta Archivio Full Kit (.ZIP)
+      </button>
+    </div>
+
+    <!-- Format 3: PBR Materials Bundle (STEP 4) -->
+    <div class="bg-[#1A2230] border border-[#8B5CF6]/50 rounded-xl p-6 flex flex-col justify-between space-y-5">
+      <div class="space-y-2">
+        <div class="text-xs text-[#A78BFA] font-mono-tabular">
+          MATERIAL ENGINE · TESSUTO PBR WORKFLOW
+        </div>
+        <h2 class="text-2xl font-bold font-display tracking-wide text-white">
+          Bundle Materiali PBR (.ZIP)
+        </h2>
+        <p class="text-sm text-[#94A3B8] leading-relaxed">
+          Genera un pacchetto professionale con mappe di rilievo e riflessione per <strong>Blender, Unity, Unreal Engine o Maya</strong>:
+        </p>
+        <div class="text-xs text-[#A78BFA] font-mono-tabular bg-[#0F141C] p-2.5 rounded-lg border border-[#2E3D56] space-y-1">
+          <div>• <strong>albedo.png</strong>: Texture colore 2048x2048 (Maglia, Shorts, Calze)</div>
+          <div>• <strong>normal.png</strong>: Normal map micro-trama {studio.fabricType} (1024x1024)</div>
+          <div>• <strong>roughness.png</strong>: Mappa ruvidità calibrata</div>
+          <div>• <strong>metallic.png</strong>: Mappa speculare metallica</div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={isExporting}
+        onclick={handleExportPbrBundle}
+        class="w-full py-3 px-5 text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+      >
+        🎨 Esporta Bundle Materiali PBR (.ZIP)
+      </button>
+    </div>
+
+    <!-- Format 4: Standalone 3D Model (.GLB) (STEP 4) -->
+    <div class="bg-[#1A2230] border border-[#38BDF8]/50 rounded-xl p-6 flex flex-col justify-between space-y-5">
+      <div class="space-y-2">
+        <div class="text-xs text-[#38BDF8] font-mono-tabular">
+          UNIVERSAL 3D ASSET · GLTF BINARY CONTAINER
+        </div>
+        <h2 class="text-2xl font-bold font-display tracking-wide text-white">
+          Modello 3D Kit (.GLB)
+        </h2>
+        <p class="text-sm text-[#94A3B8] leading-relaxed">
+          Scarica il modello tridimensionale completo del kit in formato <strong>glTF Binary (.glb)</strong> con geometria, coordinate UV, normal map e texture già collegate e pronte all'uso.
+        </p>
+        <div class="text-xs text-[#64748B] font-mono-tabular pt-1">
+          Compatibile al 100% con Blender, Three.js, Godot, Windows 3D Viewer e motori di gioco.
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={isExporting}
+        onclick={handleExportGlb}
+        class="w-full py-3 px-5 text-sm font-semibold text-[#0F141C] bg-[#38BDF8] hover:bg-[#0284C7] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+      >
+        🧊 Scarica Modello 3D Kit (.GLB)
       </button>
     </div>
   </div>
@@ -342,7 +480,7 @@
         </div>
         {#if lastExportSummary.sha256}
           <div class="text-xs text-[#94A3B8] font-mono-tabular">
-            SHA-256 Texture: {lastExportSummary.sha256.slice(0, 24)}…
+            SHA-256: {lastExportSummary.sha256.slice(0, 24)}…
           </div>
         {/if}
       </div>

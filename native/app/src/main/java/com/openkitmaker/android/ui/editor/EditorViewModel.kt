@@ -7,13 +7,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openkitmaker.android.data.repository.KitRepository
 import com.openkitmaker.android.domain.BlendMode
+import com.openkitmaker.android.domain.CameraPreset
 import com.openkitmaker.android.domain.EditorViewMode
+import com.openkitmaker.android.domain.FabricType
 import com.openkitmaker.android.domain.Kit
 import com.openkitmaker.android.domain.Layer
 import com.openkitmaker.android.domain.LightingMode
+import com.openkitmaker.android.domain.ViewportBackground
 import com.openkitmaker.android.render.TextureEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +50,23 @@ class EditorViewModel @Inject constructor(
 
     private val _showMannequin = MutableStateFlow(true)
     val showMannequin: StateFlow<Boolean> = _showMannequin.asStateFlow()
+
+    private val _showAnatomicalView = MutableStateFlow(false)
+    val showAnatomicalView: StateFlow<Boolean> = _showAnatomicalView.asStateFlow()
+
+    private val _viewportBackground = MutableStateFlow(ViewportBackground.DARK_SOLID)
+    val viewportBackground: StateFlow<ViewportBackground> = _viewportBackground.asStateFlow()
+
+    private val _fabricType = MutableStateFlow(FabricType.MESH)
+    val fabricType: StateFlow<FabricType> = _fabricType.asStateFlow()
+
+    private val _activeCameraPreset = MutableStateFlow<CameraPreset?>(CameraPreset.FRONT)
+    val activeCameraPreset: StateFlow<CameraPreset?> = _activeCameraPreset.asStateFlow()
+
+    private val _autoRotate = MutableStateFlow(false)
+    val autoRotate: StateFlow<Boolean> = _autoRotate.asStateFlow()
+
+    private var autoRotateJob: Job? = null
 
     private val _selectedLayerId = MutableStateFlow<String?>(null)
     val selectedLayerId: StateFlow<String?> = _selectedLayerId.asStateFlow()
@@ -81,6 +103,9 @@ class EditorViewModel @Inject constructor(
             val loaded = kitRepository.getKitById(kitId)
             if (loaded != null) {
                 _kit.value = loaded
+                _viewportBackground.value = loaded.metadata.viewportBackground
+                _showAnatomicalView.value = loaded.metadata.showAnatomicalView
+                _fabricType.value = loaded.metadata.fabricType
                 _selectedLayerId.value = loaded.garments.jersey.layers.firstOrNull()?.id
                 recomposite2D(loaded)
             }
@@ -145,18 +170,97 @@ class EditorViewModel @Inject constructor(
         _viewMode.value = mode
     }
 
+    fun setLightingMode(mode: LightingMode) {
+        val current = _kit.value ?: return
+        val updated = current.copy(metadata = current.metadata.copy(lightingMode = mode))
+        _kit.value = updated
+    }
+
+    fun setViewportBackground(bg: ViewportBackground) {
+        _viewportBackground.value = bg
+        val current = _kit.value ?: return
+        val updated = current.copy(metadata = current.metadata.copy(viewportBackground = bg))
+        _kit.value = updated
+    }
+
+    fun setFabricType(fabric: FabricType) {
+        _fabricType.value = fabric
+        val current = _kit.value ?: return
+        val updated = current.copy(
+            metadata = current.metadata.copy(
+                fabricType = fabric,
+                roughness = fabric.defaultRoughness,
+                metalness = fabric.defaultMetalness
+            )
+        )
+        _kit.value = updated
+    }
+
+    fun toggleAnatomicalView() {
+        val next = !_showAnatomicalView.value
+        _showAnatomicalView.value = next
+        val current = _kit.value ?: return
+        val updated = current.copy(metadata = current.metadata.copy(showAnatomicalView = next))
+        _kit.value = updated
+        recomposite2D(updated)
+    }
+
+    fun setCameraPreset(preset: CameraPreset) {
+        if (_autoRotate.value) {
+            toggleAutoRotate()
+        }
+        _activeCameraPreset.value = preset
+        when (preset) {
+            CameraPreset.FRONT -> {
+                _yaw.value = 0f
+                _pitch.value = 8f
+            }
+            CameraPreset.BACK -> {
+                _yaw.value = 180f
+                _pitch.value = 8f
+            }
+            CameraPreset.LEFT -> {
+                _yaw.value = 90f
+                _pitch.value = 8f
+            }
+            CameraPreset.RIGHT -> {
+                _yaw.value = 270f
+                _pitch.value = 8f
+            }
+        }
+    }
+
+    fun toggleAutoRotate() {
+        val next = !_autoRotate.value
+        _autoRotate.value = next
+        if (next) {
+            _activeCameraPreset.value = null
+            autoRotateJob = viewModelScope.launch {
+                while (_autoRotate.value) {
+                    _yaw.update { (it + 0.8f) % 360f }
+                    delay(16)
+                }
+            }
+        } else {
+            autoRotateJob?.cancel()
+            autoRotateJob = null
+        }
+    }
+
     fun toggleLightingMode() {
         val current = _kit.value ?: return
-        val nextLight = if (current.metadata.lightingMode == LightingMode.STUDIO) {
-            LightingMode.STADIUM
-        } else {
-            LightingMode.STUDIO
-        }
+        val modes = LightingMode.entries
+        val nextIdx = (modes.indexOf(current.metadata.lightingMode) + 1) % modes.size
+        val nextLight = modes[nextIdx]
         val updated = current.copy(metadata = current.metadata.copy(lightingMode = nextLight))
         _kit.value = updated
     }
 
     fun updateOrbit(deltaYaw: Float, deltaPitch: Float, zoomFactor: Float) {
+        if (_autoRotate.value) {
+            toggleAutoRotate()
+        }
+        _activeCameraPreset.value = null
         _yaw.update { (it + deltaYaw) % 360f }
         _pitch.update { (it + deltaPitch).coerceIn(-35f, 45f) }
         _zoom.update { (it * zoomFactor).coerceIn(0.65f, 2.25f) }
@@ -220,6 +324,10 @@ class EditorViewModel @Inject constructor(
 
     fun updateLayerBlendMode(id: String, mode: BlendMode) {
         mutateLayer(id) { it.copy(blendMode = mode) }
+    }
+
+    fun updateLayerProperties(id: String, transform: (com.openkitmaker.android.domain.LayerProperties) -> com.openkitmaker.android.domain.LayerProperties) {
+        mutateLayer(id) { it.copy(properties = transform(it.properties)) }
     }
 
     fun moveLayerZIndex(id: String, direction: Int) {

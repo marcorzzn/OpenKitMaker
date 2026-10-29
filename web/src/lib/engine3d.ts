@@ -5,7 +5,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { LightingPreset } from '../types/kit';
+import type { LightingPreset, ViewportBackground, FabricType } from '../types/kit';
 
 export interface Kit3DEngineController {
   updateCanvasTexture: (sourceCanvas: HTMLCanvasElement) => void;
@@ -15,6 +15,9 @@ export interface Kit3DEngineController {
   setMannequinVisible: (visible: boolean) => void;
   setGarmentMode: (mode: 'JERSEY' | 'SHORTS' | 'SOCKS' | 'ALL') => void;
   setLightingPreset: (preset: LightingPreset) => void;
+  setViewportBackground: (bg: ViewportBackground) => void;
+  setAnatomicalView: (enabled: boolean) => void;
+  setFabricType: (fabric: FabricType) => void;
   setFinishType: (finish: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN') => void;
   setAutoRotate: (enabled: boolean) => void;
   resetCamera: () => void;
@@ -57,22 +60,66 @@ function kelvinToColor(kelvin: number): THREE.Color {
 }
 
 /**
- * Generates a procedural breathable sports-fabric micro-normal map in linear space.
+ * Generates procedural normal maps for sports-fabric weaves in linear space:
+ * - MESH: Micro-perforations grid with porous dips.
+ * - POLYESTER: Ultra-sleek linear thread ridges, high specular reflection.
+ * - COTTON: Coarse interwoven fiber noise.
+ * - JACQUARD: Raised damask diamond relief.
  */
-function createProceduralFabricNormalMap(): THREE.DataTexture {
+function createProceduralFabricNormalMap(fabric: FabricType = 'MESH'): THREE.DataTexture {
   const size = 128;
   const data = new Uint8Array(size * size * 4);
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const idx = (y * size + x) * 4;
-      const waveX = Math.sin((x / 4) * Math.PI * 2) * 18;
-      const waveY = Math.cos((y / 4) * Math.PI * 2) * 18;
-      const pore = (x % 8 === 0 && y % 8 === 0) ? -22 : 0;
+      let nx = 128;
+      let ny = 128;
+      let nz = 240;
 
-      data[idx] = THREE.MathUtils.clamp(128 + waveX, 0, 255);
-      data[idx + 1] = THREE.MathUtils.clamp(128 + waveY + pore, 0, 255);
-      data[idx + 2] = 235;
+      switch (fabric) {
+        case 'MESH': {
+          const isPore = ((x % 8 === 0 && y % 8 === 0) || (x % 8 === 4 && y % 8 === 4));
+          const waveX = Math.sin((x / 4) * Math.PI * 2) * 14;
+          const waveY = Math.cos((y / 4) * Math.PI * 2) * 14;
+          nx = 128 + waveX;
+          ny = 128 + waveY;
+          if (isPore) {
+            nx = 96;
+            ny = 96;
+            nz = 180;
+          }
+          break;
+        }
+        case 'POLYESTER': {
+          const thread = Math.sin((x / 2) * Math.PI * 2) * 8;
+          nx = 128 + thread;
+          ny = 128;
+          nz = 252;
+          break;
+        }
+        case 'COTTON': {
+          const coarseX = Math.sin((x / 3) * Math.PI * 2) * 20;
+          const coarseY = Math.cos((y / 3) * Math.PI * 2) * 20;
+          const fiberNoise = ((x * 17 + y * 31) % 19) - 9;
+          nx = 128 + coarseX + fiberNoise;
+          ny = 128 + coarseY + fiberNoise;
+          nz = 215;
+          break;
+        }
+        case 'JACQUARD': {
+          const diag1 = ((x + y) % 16) < 4 ? 32 : -12;
+          const diag2 = ((x - y + 256) % 16) < 4 ? 32 : -12;
+          nx = 128 + diag1;
+          ny = 128 + diag2;
+          nz = 210;
+          break;
+        }
+      }
+
+      data[idx] = THREE.MathUtils.clamp(nx, 0, 255);
+      data[idx + 1] = THREE.MathUtils.clamp(ny, 0, 255);
+      data[idx + 2] = THREE.MathUtils.clamp(nz, 0, 255);
       data[idx + 3] = 255;
     }
   }
@@ -80,9 +127,114 @@ function createProceduralFabricNormalMap(): THREE.DataTexture {
   const normalTex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   normalTex.wrapS = THREE.RepeatWrapping;
   normalTex.wrapT = THREE.RepeatWrapping;
-  normalTex.repeat.set(28, 28);
+  const repeat = fabric === 'JACQUARD' ? 18 : fabric === 'COTTON' ? 32 : fabric === 'POLYESTER' ? 42 : 28;
+  normalTex.repeat.set(repeat, repeat);
   normalTex.needsUpdate = true;
   return normalTex;
+}
+
+/**
+ * Generates procedural soccer pitch grass turf with field chalk lines.
+ */
+function createPitchGroundTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#0f3d1f';
+    ctx.fillRect(0, 0, 512, 512);
+
+    ctx.fillStyle = '#14532d';
+    for (let i = 0; i < 512; i += 64) {
+      if ((i / 64) % 2 === 0) {
+        ctx.fillRect(0, i, 512, 32);
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(256, 256, 140, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, 256);
+    ctx.lineTo(512, 256);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  return tex;
+}
+
+/**
+ * Builds anatomical tailoring seam lines and cut zones overlay (Vista Anatomica).
+ */
+function buildAnatomicalSeamLines(): THREE.Group {
+  const group = new THREE.Group();
+  const seamMaterial = new THREE.LineBasicMaterial({
+    color: 0x00e5ff,
+    transparent: true,
+    opacity: 0.92,
+    linewidth: 2,
+  });
+
+  // Torso side ventilation seams
+  const leftSidePts = [
+    new THREE.Vector3(0.85, 0.68, 0.02),
+    new THREE.Vector3(0.80, 0.10, 0.02),
+    new THREE.Vector3(0.74, -0.60, 0.01),
+    new THREE.Vector3(0.75, -1.20, 0.01),
+  ];
+  const rightSidePts = [
+    new THREE.Vector3(-0.85, 0.68, 0.02),
+    new THREE.Vector3(-0.80, 0.10, 0.02),
+    new THREE.Vector3(-0.74, -0.60, 0.01),
+    new THREE.Vector3(-0.75, -1.20, 0.01),
+  ];
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(leftSidePts), seamMaterial));
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rightSidePts), seamMaterial));
+
+  // Front & Back Raglan Shoulder Cut Seams
+  const frontLeftRaglan = [new THREE.Vector3(0.38, 1.15, 0.28), new THREE.Vector3(0.85, 0.68, 0.02)];
+  const frontRightRaglan = [new THREE.Vector3(-0.38, 1.15, 0.28), new THREE.Vector3(-0.85, 0.68, 0.02)];
+  const backLeftRaglan = [new THREE.Vector3(0.38, 1.15, -0.28), new THREE.Vector3(0.85, 0.68, -0.02)];
+  const backRightRaglan = [new THREE.Vector3(-0.38, 1.15, -0.28), new THREE.Vector3(-0.85, 0.68, -0.02)];
+
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(frontLeftRaglan), seamMaterial));
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(frontRightRaglan), seamMaterial));
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(backLeftRaglan), seamMaterial));
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(backRightRaglan), seamMaterial));
+
+  // Collar neckband seam ring
+  const collarPts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 32; i++) {
+    const theta = (i / 32) * Math.PI * 2;
+    collarPts.push(new THREE.Vector3(Math.sin(theta) * 0.44, 1.16, Math.cos(theta) * 0.31));
+  }
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(collarPts), seamMaterial));
+
+  // Bottom Hem Seam Ring
+  const hemPts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 40; i++) {
+    const theta = (i / 40) * Math.PI * 2;
+    hemPts.push(new THREE.Vector3(Math.sin(theta) * 0.77, -1.21, Math.cos(theta) * 0.52));
+  }
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(hemPts), seamMaterial));
+
+  // Shorts waistband & inseams
+  const waistPts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 36; i++) {
+    const theta = (i / 36) * Math.PI * 2;
+    waistPts.push(new THREE.Vector3(Math.sin(theta) * 0.74, -1.15, Math.cos(theta) * 0.50));
+  }
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(waistPts), seamMaterial));
+
+  group.visible = false;
+  return group;
 }
 
 /**
@@ -269,7 +421,8 @@ function createFallbackCanvas(): HTMLCanvasElement {
 export function createKit3DEngine(
   container: HTMLElement,
   sourceCanvas2048: HTMLCanvasElement | null,
-  initialLighting: LightingPreset = 'studio'
+  initialLighting: LightingPreset = 'studio',
+  initialBackground: ViewportBackground = 'dark'
 ): Kit3DEngineController {
   let disposed = false;
 
@@ -380,7 +533,14 @@ export function createKit3DEngine(
   socksTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
   socksTexture.needsUpdate = true;
 
-  const normalTexture = createProceduralFabricNormalMap();
+  const fabricNormalMaps: Record<FabricType, THREE.DataTexture> = {
+    MESH: createProceduralFabricNormalMap('MESH'),
+    POLYESTER: createProceduralFabricNormalMap('POLYESTER'),
+    COTTON: createProceduralFabricNormalMap('COTTON'),
+    JACQUARD: createProceduralFabricNormalMap('JACQUARD'),
+  };
+
+  const normalTexture = fabricNormalMaps.MESH;
 
   // PBR Sportswear Materials (roughness 0.8, metalness 0.0, micro-weave normal map)
   const jerseyMaterial = new THREE.MeshPhysicalMaterial({
@@ -433,6 +593,9 @@ export function createKit3DEngine(
 
   // Procedural standalone fallback jersey group (shown immediately until GLB loads)
   const jerseyGroup = buildTailoredJerseyMeshGroup(jerseyMaterial, standMaterial);
+  // Anatomical cut lines & tailoring seams overlay group (Vista Anatomica)
+  const anatomicalGroup = buildAnatomicalSeamLines();
+  scene.add(anatomicalGroup);
   scene.add(jerseyGroup);
 
   // Clean Room Full Kit GLB Nodes
@@ -523,8 +686,16 @@ export function createKit3DEngine(
 
   // Soft contact shadow ground plane
   const shadowPlaneGeo = new THREE.PlaneGeometry(10, 10);
-  const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.38 });
-  const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+  const pitchGroundTexture = createPitchGroundTexture();
+  const darkShadowMat = new THREE.ShadowMaterial({ opacity: 0.38 });
+  const neutralShadowMat = new THREE.ShadowMaterial({ opacity: 0.28 });
+  const pitchGroundMat = new THREE.MeshStandardMaterial({
+    map: pitchGroundTexture,
+    roughness: 0.85,
+    metalness: 0.05,
+  });
+  const shadowPlaneMat = darkShadowMat;
+  const shadowPlane = new THREE.Mesh<THREE.PlaneGeometry, THREE.Material>(shadowPlaneGeo, shadowPlaneMat);
   shadowPlane.rotation.x = -Math.PI / 2;
   shadowPlane.position.y = -2.11;
   shadowPlane.receiveShadow = true;
@@ -554,25 +725,81 @@ export function createKit3DEngine(
   rimLight.position.set(0, 3.2, -4.0);
   scene.add(rimLight);
 
-  const applyLightingPreset = (preset: LightingPreset) => {
-    if (preset === 'stadium') {
-      keyLight.color.copy(kelvinToColor(5400));
-      keyLight.intensity = 1.8;
-      rimLight.color.set('#38BDF8');
-      rimLight.intensity = 1.25;
-      hemiLight.intensity = 0.85;
-      ambientLight.intensity = 0.95;
-      scene.background = new THREE.Color('#090E17');
+  const applyViewportBackground = (bg: ViewportBackground) => {
+    if (bg === 'neutral') {
+      scene.background = new THREE.Color('#1E2530');
+      scene.fog = new THREE.FogExp2('#1E2530', 0.085);
+      shadowPlane.material = neutralShadowMat;
+    } else if (bg === 'pitch') {
+      scene.background = new THREE.Color('#0A1C12');
+      scene.fog = new THREE.FogExp2('#0A1C12', 0.085);
+      shadowPlane.material = pitchGroundMat;
     } else {
-      keyLight.color.copy(kelvinToColor(6500));
-      keyLight.intensity = 1.3;
-      rimLight.color.set('#00C49F');
-      rimLight.intensity = 0.75;
-      hemiLight.intensity = 0.65;
-      ambientLight.intensity = 0.85;
       scene.background = new THREE.Color('#0F141C');
+      scene.fog = new THREE.FogExp2('#0F141C', 0.085);
+      shadowPlane.material = darkShadowMat;
     }
   };
+
+  const applyLightingPreset = (preset: LightingPreset) => {
+    switch (preset) {
+      case 'stadium':
+        keyLight.color.copy(kelvinToColor(5400));
+        keyLight.intensity = 1.85;
+        keyLight.position.set(3.2, 5.0, 4.2);
+        fillLight.color.set('#60A5FA');
+        fillLight.intensity = 0.85;
+        rimLight.color.set('#38BDF8');
+        rimLight.intensity = 1.35;
+        hemiLight.color.set(0xdbeafe);
+        hemiLight.groundColor.set(0x090e17);
+        hemiLight.intensity = 0.85;
+        ambientLight.intensity = 0.95;
+        break;
+      case 'sunset':
+        keyLight.color.copy(kelvinToColor(3200));
+        keyLight.intensity = 1.6;
+        keyLight.position.set(4.5, 2.5, 3.5);
+        fillLight.color.set('#F97316');
+        fillLight.intensity = 0.60;
+        rimLight.color.set('#F43F5E');
+        rimLight.intensity = 1.25;
+        hemiLight.color.set(0xfde047);
+        hemiLight.groundColor.set(0x1f1418);
+        hemiLight.intensity = 0.60;
+        ambientLight.intensity = 0.70;
+        break;
+      case 'radiant':
+        keyLight.color.copy(kelvinToColor(8500));
+        keyLight.intensity = 2.0;
+        keyLight.position.set(0, 5.5, 4.0);
+        fillLight.color.set('#C084FC');
+        fillLight.intensity = 0.90;
+        rimLight.color.set('#06B6D4');
+        rimLight.intensity = 1.55;
+        hemiLight.color.set(0xe0e7ff);
+        hemiLight.groundColor.set(0x1e1b4b);
+        hemiLight.intensity = 0.85;
+        ambientLight.intensity = 1.05;
+        break;
+      case 'studio':
+      default:
+        keyLight.color.copy(kelvinToColor(6500));
+        keyLight.intensity = 1.3;
+        keyLight.position.set(3.2, 4.5, 4.2);
+        fillLight.color.set('#94A3B8');
+        fillLight.intensity = 0.65;
+        rimLight.color.set('#00C49F');
+        rimLight.intensity = 0.75;
+        hemiLight.color.set(0xffffff);
+        hemiLight.groundColor.set(0x1a2230);
+        hemiLight.intensity = 0.65;
+        ambientLight.intensity = 0.85;
+        break;
+    }
+  };
+
+  applyViewportBackground(initialBackground);
 
   applyLightingPreset(initialLighting);
 
@@ -606,6 +833,7 @@ export function createKit3DEngine(
       const rotDelta = dt * 0.65;
       jerseyGroup.rotation.y += rotDelta;
       if (fullKitRoot) fullKitRoot.rotation.y += rotDelta;
+      anatomicalGroup.rotation.y += rotDelta;
     }
 
     if (targetCamPos) {
@@ -668,6 +896,60 @@ export function createKit3DEngine(
     setLightingPreset(preset: LightingPreset) {
       applyLightingPreset(preset);
     },
+    setViewportBackground(bg: ViewportBackground) {
+      applyViewportBackground(bg);
+    },
+    setAnatomicalView(enabled: boolean) {
+      anatomicalGroup.visible = enabled;
+    },
+    setFabricType(fabric: FabricType) {
+      const norm = fabricNormalMaps[fabric] || fabricNormalMaps.MESH;
+      const updateMat = (mat: THREE.MeshPhysicalMaterial) => {
+        mat.normalMap = norm;
+        switch (fabric) {
+          case 'MESH':
+            mat.roughness = 0.78;
+            mat.metalness = 0.02;
+            mat.clearcoat = 0.0;
+            mat.clearcoatRoughness = 0.0;
+            mat.sheen = 0.35;
+            mat.sheenRoughness = 0.55;
+            mat.normalScale.set(0.40, 0.40);
+            break;
+          case 'POLYESTER':
+            mat.roughness = 0.22;
+            mat.metalness = 0.12;
+            mat.clearcoat = 0.38;
+            mat.clearcoatRoughness = 0.18;
+            mat.sheen = 0.85;
+            mat.sheenRoughness = 0.25;
+            mat.normalScale.set(0.20, 0.20);
+            break;
+          case 'COTTON':
+            mat.roughness = 0.90;
+            mat.metalness = 0.01;
+            mat.clearcoat = 0.0;
+            mat.clearcoatRoughness = 0.0;
+            mat.sheen = 0.15;
+            mat.sheenRoughness = 0.85;
+            mat.normalScale.set(0.65, 0.65);
+            break;
+          case 'JACQUARD':
+            mat.roughness = 0.48;
+            mat.metalness = 0.06;
+            mat.clearcoat = 0.14;
+            mat.clearcoatRoughness = 0.35;
+            mat.sheen = 0.65;
+            mat.sheenRoughness = 0.40;
+            mat.normalScale.set(0.55, 0.55);
+            break;
+        }
+        mat.needsUpdate = true;
+      };
+      updateMat(jerseyMaterial);
+      updateMat(shortsMaterial);
+      updateMat(socksMaterial);
+    },
     setFinishType(finish: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN') {
       const updateMat = (mat: THREE.MeshPhysicalMaterial) => {
         if (finish === 'MATTE_MESH') {
@@ -695,23 +977,26 @@ export function createKit3DEngine(
     resetCamera() {
       jerseyGroup.rotation.set(0, 0, 0);
       if (fullKitRoot) fullKitRoot.rotation.set(0, 0, 0);
+      anatomicalGroup.rotation.set(0, 0, 0);
       targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
     },
     setCameraAngle(view: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT') {
       jerseyGroup.rotation.set(0, 0, 0);
       if (fullKitRoot) fullKitRoot.rotation.set(0, 0, 0);
+      anatomicalGroup.rotation.set(0, 0, 0);
+      const targetY = controls.target.y || 0.15;
       switch (view) {
         case 'FRONT':
-          targetCamPos = new THREE.Vector3(0, 0.25, 4.6);
+          targetCamPos = new THREE.Vector3(0, targetY + 0.1, 4.6);
           break;
         case 'BACK':
-          targetCamPos = new THREE.Vector3(0, 0.25, -4.6);
+          targetCamPos = new THREE.Vector3(0, targetY + 0.1, -4.6);
           break;
         case 'LEFT':
-          targetCamPos = new THREE.Vector3(4.4, 0.25, 0);
+          targetCamPos = new THREE.Vector3(4.4, targetY + 0.1, 0);
           break;
         case 'RIGHT':
-          targetCamPos = new THREE.Vector3(-4.4, 0.25, 0);
+          targetCamPos = new THREE.Vector3(-4.4, targetY + 0.1, 0);
           break;
       }
     },
@@ -742,7 +1027,11 @@ export function createKit3DEngine(
       jerseyTexture.dispose();
       shortsTexture.dispose();
       socksTexture.dispose();
-      normalTexture.dispose();
+      Object.values(fabricNormalMaps).forEach((map) => map.dispose());
+      pitchGroundTexture.dispose();
+      darkShadowMat.dispose();
+      neutralShadowMat.dispose();
+      pitchGroundMat.dispose();
       jerseyMaterial.dispose();
       shortsMaterial.dispose();
       socksMaterial.dispose();

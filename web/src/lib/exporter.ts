@@ -1,6 +1,7 @@
 // Implements: SCR-EXPORT, SCR-SAVED / FUN-EXPORT-PNG, FUN-EXPORT-ZIP, FUN-EXPORT-SINGLE
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
-import type { Kit, KitManifestV1, GarmentType } from '../types/kit';
+import * as THREE from 'three';
+import type { Kit, KitManifestV1, GarmentType, FabricType, ExportResolution } from '../types/kit';
 import {
   compositeJersey2048,
   compositeShorts2048,
@@ -10,6 +11,13 @@ import {
   TEXTURE_SIZE,
 } from './compositor2d';
 import { generateUuidV4, ensureKitGarments } from '../data/templates';
+
+const fabricPbrValues: Record<FabricType, { roughness: number; metalness: number; label: string }> = {
+  MESH: { roughness: 0.78, metalness: 0.02, label: 'Mesh Traspirante' },
+  POLYESTER: { roughness: 0.22, metalness: 0.12, label: 'Poliestere Lucido' },
+  COTTON: { roughness: 0.90, metalness: 0.01, label: 'Cotone Anni 90' },
+  JACQUARD: { roughness: 0.48, metalness: 0.06, label: 'Jacquard Nobile' },
+};
 
 async function canvasToUint8ArrayPng(canvas: HTMLCanvasElement): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -65,22 +73,135 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
 }
 
 /**
- * FUN-EXPORT-SINGLE: Generates and downloads lossless 2048x2048 RGBA 32-bit PNG texture for a single garment.
+ * Genera un canvas contenente la normal map procedurale del tessuto (tangent space RGB).
  */
-export async function exportGarmentPng2048(
+export function generateFabricNormalCanvas(fabric: FabricType = 'MESH', size = 1024): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const imgData = ctx.createImageData(size, size);
+  const data = imgData.data;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const idx = (y * size + x) * 4;
+      let nx = 128;
+      let ny = 128;
+      let nz = 240;
+
+      switch (fabric) {
+        case 'MESH': {
+          const isPore = ((x % 16 === 0 && y % 16 === 0) || (x % 16 === 8 && y % 16 === 8));
+          const waveX = Math.sin((x / 8) * Math.PI * 2) * 14;
+          const waveY = Math.cos((y / 8) * Math.PI * 2) * 14;
+          nx = 128 + waveX;
+          ny = 128 + waveY;
+          if (isPore) {
+            nx = 96;
+            ny = 96;
+            nz = 180;
+          }
+          break;
+        }
+        case 'POLYESTER': {
+          const thread = Math.sin((x / 4) * Math.PI * 2) * 8;
+          nx = 128 + thread;
+          ny = 128;
+          nz = 252;
+          break;
+        }
+        case 'COTTON': {
+          const coarseX = Math.sin((x / 6) * Math.PI * 2) * 20;
+          const coarseY = Math.cos((y / 6) * Math.PI * 2) * 20;
+          const fiberNoise = ((x * 17 + y * 31) % 19) - 9;
+          nx = 128 + coarseX + fiberNoise;
+          ny = 128 + coarseY + fiberNoise;
+          nz = 215;
+          break;
+        }
+        case 'JACQUARD': {
+          const diag1 = ((x + y) % 32) < 8 ? 32 : -12;
+          const diag2 = ((x - y + 1024) % 32) < 8 ? 32 : -12;
+          nx = 128 + diag1;
+          ny = 128 + diag2;
+          nz = 210;
+          break;
+        }
+      }
+
+      data[idx] = Math.min(255, Math.max(0, Math.round(nx)));
+      data[idx + 1] = Math.min(255, Math.max(0, Math.round(ny)));
+      data[idx + 2] = Math.min(255, Math.max(0, Math.round(nz)));
+      data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
+/**
+ * Genera una mappa PBR monocromatica a scala di grigi per Roughness o Metalness.
+ */
+export function generateMonochromeMapCanvas(
+  factor: number,
+  size = 1024,
+  noiseIntensity = 0.03
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const imgData = ctx.createImageData(size, size);
+  const data = imgData.data;
+
+  const baseByte = Math.round(Math.min(1, Math.max(0, factor)) * 255);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const idx = (y * size + x) * 4;
+      const noise = ((x * 19 + y * 37) % 21 - 10) * noiseIntensity * (255 / 10);
+      const val = Math.min(255, Math.max(0, Math.round(baseByte + noise)));
+      data[idx] = val;
+      data[idx + 1] = val;
+      data[idx + 2] = val;
+      data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
+/**
+ * FUN-EXPORT-SINGLE & STEP 4: Generates and downloads lossless 2048x2048 (2K) or 4096x4096 (4K) PNG texture.
+ */
+export async function exportGarmentPng(
   kit: Kit,
   garmentType: GarmentType,
+  resolution: ExportResolution = 2048,
   onProgress?: (pct: number) => void
 ): Promise<{ bytes: Uint8Array; sha256: string; filename: string }> {
   onProgress?.(15);
-  const workCanvas = document.createElement('canvas');
-  workCanvas.width = TEXTURE_SIZE;
-  workCanvas.height = TEXTURE_SIZE;
+  const baseCanvas = document.createElement('canvas');
+  baseCanvas.width = TEXTURE_SIZE;
+  baseCanvas.height = TEXTURE_SIZE;
+  compositeGarment2048(baseCanvas, kit, garmentType, { showUvGuides: false });
+  onProgress?.(50);
 
-  compositeGarment2048(workCanvas, kit, garmentType, { showUvGuides: false });
-  onProgress?.(60);
+  let outputCanvas = baseCanvas;
+  if (resolution === 4096) {
+    const canvas4k = document.createElement('canvas');
+    canvas4k.width = 4096;
+    canvas4k.height = 4096;
+    const ctx4k = canvas4k.getContext('2d')!;
+    ctx4k.imageSmoothingEnabled = true;
+    ctx4k.imageSmoothingQuality = 'high';
+    ctx4k.drawImage(baseCanvas, 0, 0, 4096, 4096);
+    outputCanvas = canvas4k;
+  }
+  onProgress?.(70);
 
-  const pngBytes = await canvasToUint8ArrayPng(workCanvas);
+  const pngBytes = await canvasToUint8ArrayPng(outputCanvas);
   const sha256 = await computeSha256Hex(pngBytes);
   onProgress?.(90);
 
@@ -89,12 +210,28 @@ export async function exportGarmentPng2048(
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
   const prefix = garmentType.toLowerCase();
-  const filename = `${prefix}_${safeSlug || kit.id.slice(0, 8)}_2048.png`;
+  const filename = `${prefix}_${safeSlug || kit.id.slice(0, 8)}_${resolution}.png`;
   const blob = new Blob([pngBytes as unknown as BlobPart], { type: 'image/png' });
   triggerBlobDownload(blob, filename);
   onProgress?.(100);
 
   return { bytes: pngBytes, sha256, filename };
+}
+
+export async function exportGarmentPng2048(
+  kit: Kit,
+  garmentType: GarmentType,
+  onProgress?: (pct: number) => void
+): Promise<{ bytes: Uint8Array; sha256: string; filename: string }> {
+  return exportGarmentPng(kit, garmentType, 2048, onProgress);
+}
+
+export async function exportGarmentPng4096(
+  kit: Kit,
+  garmentType: GarmentType,
+  onProgress?: (pct: number) => void
+): Promise<{ bytes: Uint8Array; sha256: string; filename: string }> {
+  return exportGarmentPng(kit, garmentType, 4096, onProgress);
 }
 
 /**
@@ -104,7 +241,7 @@ export async function exportKitPng2048(
   kit: Kit,
   onProgress?: (pct: number) => void
 ): Promise<{ bytes: Uint8Array; sha256: string }> {
-  const res = await exportGarmentPng2048(kit, 'JERSEY', onProgress);
+  const res = await exportGarmentPng(kit, 'JERSEY', 2048, onProgress);
   return { bytes: res.bytes, sha256: res.sha256 };
 }
 
@@ -229,6 +366,267 @@ export async function exportKitInteroperableZip(
     manifest,
     zipSizeBytes: zipped.byteLength,
   };
+}
+
+/**
+ * STEP 4: Exports complete PBR Material Bundle (.ZIP) for 3D production (Blender / Unity / Unreal):
+ * - albedo.png (2048x2048)
+ * - albedo_jersey.png (2048x2048)
+ * - albedo_shorts.png (2048x2048)
+ * - albedo_socks.png (2048x2048)
+ * - normal.png (1024x1024 procedural fabric normal map)
+ * - roughness.png (1024x1024 greyscale roughness map)
+ * - metallic.png (1024x1024 greyscale metallic map)
+ * - preview.png (512x512 kit mockup)
+ * - pbr_manifest.json (PBR texture map definitions)
+ */
+export async function exportKitPbrBundleZip(
+  kit: Kit,
+  onProgress?: (pct: number) => void
+): Promise<{ zipSizeBytes: number; filename: string }> {
+  onProgress?.(5);
+
+  const fabric = kit.metadata?.fabricType || 'MESH';
+  const pbrInfo = fabricPbrValues[fabric] || fabricPbrValues.MESH;
+
+  // 1. Albedo Canvases
+  const jerseyCanvas = document.createElement('canvas');
+  jerseyCanvas.width = TEXTURE_SIZE;
+  jerseyCanvas.height = TEXTURE_SIZE;
+  compositeJersey2048(jerseyCanvas, kit, { showUvGuides: false });
+  onProgress?.(20);
+
+  const shortsCanvas = document.createElement('canvas');
+  shortsCanvas.width = TEXTURE_SIZE;
+  shortsCanvas.height = TEXTURE_SIZE;
+  compositeShorts2048(shortsCanvas, kit, { showUvGuides: false });
+  onProgress?.(35);
+
+  const socksCanvas = document.createElement('canvas');
+  socksCanvas.width = TEXTURE_SIZE;
+  socksCanvas.height = TEXTURE_SIZE;
+  compositeSocks2048(socksCanvas, kit, { showUvGuides: false });
+  onProgress?.(45);
+
+  const prevCanvas = document.createElement('canvas');
+  prevCanvas.width = 512;
+  prevCanvas.height = 512;
+  renderFullKitMockup512(prevCanvas, kit);
+  onProgress?.(55);
+
+  // 2. Procedural Normal, Roughness, Metallic Canvases
+  const normalCanvas = generateFabricNormalCanvas(fabric, 1024);
+  const roughnessCanvas = generateMonochromeMapCanvas(pbrInfo.roughness, 1024, 0.03);
+  const metallicCanvas = generateMonochromeMapCanvas(pbrInfo.metalness, 1024, 0.01);
+  onProgress?.(65);
+
+  // 3. Convert all canvases to PNG Uint8Arrays
+  const [
+    jerseyBytes,
+    shortsBytes,
+    socksBytes,
+    previewBytes,
+    normalBytes,
+    roughnessBytes,
+    metallicBytes,
+  ] = await Promise.all([
+    canvasToUint8ArrayPng(jerseyCanvas),
+    canvasToUint8ArrayPng(shortsCanvas),
+    canvasToUint8ArrayPng(socksCanvas),
+    canvasToUint8ArrayPng(prevCanvas),
+    canvasToUint8ArrayPng(normalCanvas),
+    canvasToUint8ArrayPng(roughnessCanvas),
+    canvasToUint8ArrayPng(metallicCanvas),
+  ]);
+  onProgress?.(80);
+
+  const pbrManifest = {
+    schemaVersion: '1.0.0',
+    kitId: kit.id,
+    kitName: kit.name,
+    category: kit.category,
+    fabricType: fabric,
+    fabricDescription: pbrInfo.label,
+    pbrParameters: {
+      roughnessFactor: pbrInfo.roughness,
+      metallicFactor: pbrInfo.metalness,
+      normalMapFormat: 'Tangent Space OpenGL (+Y)',
+    },
+    textureMaps: {
+      albedo: 'albedo.png (Primary Jersey)',
+      albedoJersey: 'albedo_jersey.png (2048x2048)',
+      albedoShorts: 'albedo_shorts.png (2048x2048)',
+      albedoSocks: 'albedo_socks.png (2048x2048)',
+      normal: 'normal.png (1024x1024 Micro-Weave)',
+      roughness: 'roughness.png (1024x1024 Greyscale)',
+      metallic: 'metallic.png (1024x1024 Greyscale)',
+      preview: 'preview.png (512x512 Mockup)',
+    },
+    compatibleEngines: ['Blender 4+', 'Unity URP/HDRP', 'Unreal Engine 5', 'Godot 4'],
+    exportedAt: new Date().toISOString(),
+  };
+
+  const pbrManifestBytes = strToU8(JSON.stringify(pbrManifest, null, 2));
+  onProgress?.(90);
+
+  const zipped = zipSync(
+    {
+      'albedo.png': jerseyBytes,
+      'albedo_jersey.png': jerseyBytes,
+      'albedo_shorts.png': shortsBytes,
+      'albedo_socks.png': socksBytes,
+      'normal.png': normalBytes,
+      'roughness.png': roughnessBytes,
+      'metallic.png': metallicBytes,
+      'preview.png': previewBytes,
+      'pbr_manifest.json': pbrManifestBytes,
+    },
+    { level: 6 }
+  );
+
+  const safeSlug = kit.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+  const filename = `pbr_bundle_${safeSlug || kit.id.slice(0, 8)}.zip`;
+  const zipBlob = new Blob([zipped as unknown as BlobPart], { type: 'application/zip' });
+  triggerBlobDownload(zipBlob, filename);
+  onProgress?.(100);
+
+  return {
+    zipSizeBytes: zipped.byteLength,
+    filename,
+  };
+}
+
+/**
+ * STEP 4: Exports standalone self-contained 3D Model (.GLB) with full outfit and baked textures.
+ * Ready for drag-and-drop into Blender, Unity, or Unreal Engine.
+ */
+export async function exportKitGlb(
+  kit: Kit,
+  onProgress?: (pct: number) => void
+): Promise<{ blob: Blob; filename: string }> {
+  onProgress?.(10);
+
+  const [THREE, { GLTFLoader }, { GLTFExporter }] = await Promise.all([
+    import('three'),
+    import('three/examples/jsm/loaders/GLTFLoader.js'),
+    import('three/examples/jsm/exporters/GLTFExporter.js'),
+  ]);
+  onProgress?.(25);
+
+  const fabric = kit.metadata?.fabricType || 'MESH';
+  const pbrInfo = fabricPbrValues[fabric] || fabricPbrValues.MESH;
+
+  // 1. Composite Canvases
+  const jerseyCanvas = document.createElement('canvas');
+  jerseyCanvas.width = TEXTURE_SIZE;
+  jerseyCanvas.height = TEXTURE_SIZE;
+  compositeJersey2048(jerseyCanvas, kit, { showUvGuides: false });
+
+  const shortsCanvas = document.createElement('canvas');
+  shortsCanvas.width = TEXTURE_SIZE;
+  shortsCanvas.height = TEXTURE_SIZE;
+  compositeShorts2048(shortsCanvas, kit, { showUvGuides: false });
+
+  const socksCanvas = document.createElement('canvas');
+  socksCanvas.width = TEXTURE_SIZE;
+  socksCanvas.height = TEXTURE_SIZE;
+  compositeSocks2048(socksCanvas, kit, { showUvGuides: false });
+
+  const normalCanvas = generateFabricNormalCanvas(fabric, 512);
+  onProgress?.(45);
+
+  // 2. Load Base Clean GLB Model
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync('/models/kit_full_outfit_clean.glb');
+  onProgress?.(65);
+
+  // 3. Create textures & Materials
+  const jerseyTex = new THREE.CanvasTexture(jerseyCanvas);
+  jerseyTex.colorSpace = THREE.SRGBColorSpace;
+  jerseyTex.flipY = false;
+
+  const shortsTex = new THREE.CanvasTexture(shortsCanvas);
+  shortsTex.colorSpace = THREE.SRGBColorSpace;
+  shortsTex.flipY = false;
+
+  const socksTex = new THREE.CanvasTexture(socksCanvas);
+  socksTex.colorSpace = THREE.SRGBColorSpace;
+  socksTex.flipY = false;
+
+  const normalTex = new THREE.CanvasTexture(normalCanvas);
+  normalTex.wrapS = THREE.RepeatWrapping;
+  normalTex.wrapT = THREE.RepeatWrapping;
+  normalTex.repeat.set(24, 24);
+
+  const jerseyMat = new THREE.MeshStandardMaterial({
+    name: 'JerseyMaterial',
+    map: jerseyTex,
+    normalMap: normalTex,
+    roughness: pbrInfo.roughness,
+    metalness: pbrInfo.metalness,
+  });
+
+  const shortsMat = new THREE.MeshStandardMaterial({
+    name: 'ShortsMaterial',
+    map: shortsTex,
+    normalMap: normalTex,
+    roughness: pbrInfo.roughness,
+    metalness: pbrInfo.metalness,
+  });
+
+  const socksMat = new THREE.MeshStandardMaterial({
+    name: 'SocksMaterial',
+    map: socksTex,
+    normalMap: normalTex,
+    roughness: pbrInfo.roughness,
+    metalness: pbrInfo.metalness,
+  });
+
+  const mannequinMat = new THREE.MeshStandardMaterial({
+    name: 'MannequinMaterial',
+    color: 0x1e2530,
+    roughness: 0.85,
+    metalness: 0.05,
+  });
+
+  // Assign materials to meshes
+  gltf.scene.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      const name = (mesh.name || mesh.parent?.name || '').toLowerCase();
+      if (name.includes('jersey')) {
+        mesh.material = jerseyMat;
+      } else if (name.includes('shorts')) {
+        mesh.material = shortsMat;
+      } else if (name.includes('socks')) {
+        mesh.material = socksMat;
+      } else if (name.includes('mannequin')) {
+        mesh.material = mannequinMat;
+      }
+    }
+  });
+  onProgress?.(80);
+
+  // 4. Export as binary GLB
+  const exporter = new GLTFExporter();
+  const glbBuffer = (await exporter.parseAsync(gltf.scene, {
+    binary: true,
+  })) as ArrayBuffer;
+  onProgress?.(95);
+
+  const safeSlug = kit.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+  const filename = `kit_${safeSlug || kit.id.slice(0, 8)}.glb`;
+  const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
+  triggerBlobDownload(blob, filename);
+  onProgress?.(100);
+
+  return { blob, filename };
 }
 
 /**

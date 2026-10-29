@@ -3,7 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { studio } from '../state/studio.svelte';
   import type { Kit3DEngineController } from '../lib/engine3d';
-  import type { LightingPreset } from '../types/kit';
+  import type { LightingPreset, ViewportBackground, FabricType } from '../types/kit';
 
   let {
     sourceCanvas = null,
@@ -23,8 +23,8 @@
   let engine = $state<Kit3DEngineController | null>(null);
   let isLoadingEngine = $state<boolean>(true);
   let loadError = $state<string | null>(null);
-  let dockCollapsed = $state<boolean>(false);
   let autoRotate = $state<boolean>(false);
+  let activeCameraPreset = $state<'FRONT' | 'BACK' | 'LEFT' | 'RIGHT' | null>('FRONT');
   let fpsValue = $state<number>(60);
   let fpsTimer: ReturnType<typeof setInterval> | null = null;
   let resizeObserver: ResizeObserver | null = null;
@@ -46,7 +46,8 @@
       const instance = module3d.createKit3DEngine(
         mountContainer,
         jerseyCanvas || sourceCanvas,
-        studio.lightingPreset
+        studio.lightingPreset,
+        studio.viewportBackground
       );
 
       if (isDestroyed) {
@@ -56,8 +57,10 @@
       }
 
       engine = instance;
+      engine.setFabricType(studio.fabricType);
       engine.setFinishType(studio.activeKit.metadata?.finishType || 'PRO_VAPOR');
       engine.setMannequinVisible(studio.showMannequin);
+      engine.setAnatomicalView(studio.showAnatomicalView);
       engine.setGarmentMode(studio.activeGarmentType);
       if (shortsCanvas) engine.updateShortsTexture(shortsCanvas);
       if (socksCanvas) engine.updateSocksTexture(socksCanvas);
@@ -70,7 +73,6 @@
       });
       resizeObserver.observe(mountContainer);
 
-      // Force an initial resize once DOM layout finishes
       requestAnimationFrame(() => {
         engine?.resize();
       });
@@ -106,11 +108,19 @@
     }
     const _rev = textureRevision;
     const _mannequin = studio.showMannequin;
+    const _anatomy = studio.showAnatomicalView;
     const _garment = studio.activeGarmentType;
+    const _lighting = studio.lightingPreset;
+    const _bg = studio.viewportBackground;
+    const _fabric = studio.fabricType;
 
     if (engine) {
+      engine.setFabricType(_fabric);
       engine.setMannequinVisible(_mannequin);
+      engine.setAnatomicalView(_anatomy);
       engine.setGarmentMode(_garment);
+      engine.setLightingPreset(_lighting);
+      engine.setViewportBackground(_bg);
 
       if (jerseyCanvas) {
         engine.updateJerseyTexture(jerseyCanvas);
@@ -126,11 +136,36 @@
     }
   });
 
+  function selectCameraPreset(view: 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT') {
+    activeCameraPreset = view;
+    if (autoRotate) {
+      autoRotate = false;
+      engine?.setAutoRotate(false);
+    }
+    engine?.setCameraAngle(view);
+  }
+
+  function toggleAutoRotate() {
+    autoRotate = !autoRotate;
+    if (autoRotate) {
+      activeCameraPreset = null;
+    }
+    engine?.setAutoRotate(autoRotate);
+  }
 
   function switchLighting(preset: LightingPreset) {
-    studio.lightingPreset = preset;
-    studio.activeKit.metadata.lightingPreset = preset;
+    studio.setLightingPreset(preset);
     engine?.setLightingPreset(preset);
+  }
+
+  function switchBackground(bg: ViewportBackground) {
+    studio.setViewportBackground(bg);
+    engine?.setViewportBackground(bg);
+  }
+
+  function switchFabric(fabric: FabricType) {
+    studio.setFabricType(fabric);
+    engine?.setFabricType(fabric);
   }
 
   function switchFinish(finish: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN') {
@@ -138,21 +173,168 @@
     studio.textureRevision++;
     engine?.setFinishType(finish);
   }
-
-  function toggleAutoRotate() {
-    autoRotate = !autoRotate;
-    engine?.setAutoRotate(autoRotate);
-  }
 </script>
 
-<div class="relative w-full h-full min-h-[460px] bg-[#0F141C] rounded-xl border border-[#2E3D56] overflow-hidden flex flex-col">
-  <!-- Minimal Top-Left Viewport Spec Badge (Unobstructed 3D Center) -->
-  <div class="absolute top-3 left-3 z-10 pointer-events-none flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0F141C]/85 border border-[#2E3D56] text-xs font-mono-tabular text-[#94A3B8]">
-    <span class="text-white font-semibold">Viewport 3D PBR</span>
-    <span aria-hidden="true">·</span>
-    <span>KTX2 / Draco Ready</span>
-    <span aria-hidden="true">·</span>
-    <span class="text-[#00C49F]">{fpsValue} FPS</span>
+<div class="relative w-full h-full min-h-[500px] bg-[#0F141C] rounded-2xl border border-[#2E3D56] overflow-hidden flex flex-col shadow-2xl">
+  <!-- Minimal Specs Pill (Top-Left) -->
+  <div class="absolute top-3 left-3 z-30 pointer-events-none hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0F141C]/80 backdrop-blur-md border border-[#2E3D56]/60 text-xs font-mono-tabular text-[#94A3B8] shadow-lg">
+    <span class="w-2 h-2 rounded-full bg-[#00C49F] animate-pulse"></span>
+    <span class="text-white font-semibold">3D PBR Studio</span>
+    <span aria-hidden="true" class="text-[#64748B]">·</span>
+    <span class="text-[#00C49F] font-bold">{fpsValue} FPS</span>
+  </div>
+
+  <!-- FLOATING CONTROL BAR OVER 3D VIEWPORT (Material Design 3 Glassmorphism) -->
+  <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[96%] max-w-4xl bg-[#141B26]/85 backdrop-blur-md border border-[#2E3D56]/70 rounded-2xl p-2 shadow-2xl flex flex-wrap items-center justify-between gap-2.5 transition-all">
+    <!-- 1. Viste Rapide (Camera Presets) -->
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+      <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Vista:</span>
+      <button
+        type="button"
+        onclick={() => selectCameraPreset('FRONT')}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'FRONT' && !autoRotate
+          ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
+          : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+        title="Vista Frontale"
+      >
+        Fronte
+      </button>
+      <button
+        type="button"
+        onclick={() => selectCameraPreset('BACK')}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'BACK' && !autoRotate
+          ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
+          : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+        title="Vista Posteriore"
+      >
+        Retro
+      </button>
+      <button
+        type="button"
+        onclick={() => selectCameraPreset('LEFT')}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'LEFT' && !autoRotate
+          ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
+          : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+        title="Vista Fianco Sinistro"
+      >
+        Lato SX
+      </button>
+      <button
+        type="button"
+        onclick={() => selectCameraPreset('RIGHT')}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'RIGHT' && !autoRotate
+          ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
+          : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+        title="Vista Fianco Destro"
+      >
+        Lato DX
+      </button>
+      <button
+        type="button"
+        onclick={toggleAutoRotate}
+        class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 {autoRotate
+          ? 'bg-[#00C49F] text-[#0F141C] shadow-md shadow-[#00C49F]/30'
+          : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+        title="Rotazione Continua Orbitale 360°"
+      >
+        <span>🔄</span>
+        <span>360°</span>
+      </button>
+    </div>
+
+    <!-- 2. Controlli Luce (Lighting Presets) -->
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+      <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Luce:</span>
+      {#each [
+        { id: 'studio', label: 'Studio', emoji: '💡' },
+        { id: 'stadium', label: 'Stadio', emoji: '🏟️' },
+        { id: 'sunset', label: 'Tramonto', emoji: '🌅' },
+        { id: 'radiant', label: 'Radiante', emoji: '✨' }
+      ] as item (item.id)}
+        <button
+          type="button"
+          onclick={() => switchLighting(item.id as LightingPreset)}
+          class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.lightingPreset === item.id
+            ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30'
+            : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+          title="Luce {item.label}"
+        >
+          <span>{item.emoji}</span>
+          <span class="hidden sm:inline">{item.label}</span>
+        </button>
+      {/each}
+    </div>
+
+    <!-- 3. Toggle Manichino & Vista Anatomica -->
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+      <button
+        type="button"
+        onclick={() => studio.toggleMannequin()}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 {studio.showMannequin
+          ? 'bg-[#253146] border-[#00C49F]/50 text-[#00C49F]'
+          : 'border-transparent text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1E293B]'}"
+        title="Mostra / Nascondi Manichino Sartoriale"
+      >
+        <span>👤</span>
+        <span class="hidden sm:inline">Manichino</span>
+      </button>
+      <button
+        type="button"
+        onclick={() => studio.toggleAnatomicalView()}
+        class="px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 {studio.showAnatomicalView
+          ? 'bg-[#00E5FF]/20 border-[#00E5FF]/70 text-[#00E5FF] shadow-sm shadow-[#00E5FF]/20 font-bold'
+          : 'border-transparent text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1E293B]'}"
+        title="Vista Anatomica: Visualizza cuciture, taglio raglan e linee sartoriali 3D"
+      >
+        <span>✂️</span>
+        <span class="hidden sm:inline">Anatomica</span>
+      </button>
+    </div>
+
+    <!-- 4. Sfondo (Background Presets) -->
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+      <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Sfondo:</span>
+      {#each [
+        { id: 'dark', label: 'Scuro', emoji: '⬛' },
+        { id: 'neutral', label: 'Neutro', emoji: '🏢' },
+        { id: 'pitch', label: 'Campo', emoji: '⚽' }
+      ] as bg (bg.id)}
+        <button
+          type="button"
+          onclick={() => switchBackground(bg.id as ViewportBackground)}
+          class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.viewportBackground === bg.id
+            ? 'bg-[#253146] text-white border border-[#38BDF8] shadow-sm'
+            : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+          title="Sfondo: {bg.label}"
+        >
+          <span>{bg.emoji}</span>
+          <span class="hidden sm:inline">{bg.label}</span>
+        </button>
+      {/each}
+    </div>
+
+    <!-- 5. Tessuto & Materiale (Fabric Engine) -->
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+      <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Tessuto:</span>
+      {#each [
+        { id: 'MESH', label: 'Mesh', emoji: '🎽', title: 'Mesh Traspirante (Micro-fori opachi)' },
+        { id: 'POLYESTER', label: 'Poliestere', emoji: '✨', title: 'Poliestere Lucido (Riflessi plastici)' },
+        { id: 'COTTON', label: 'Cotone', emoji: '👕', title: "Cotone Anni '90 (Fibre ruvide opache)" },
+        { id: 'JACQUARD', label: 'Jacquard', emoji: '🏛️', title: 'Jacquard (Trama damascata in rilievo)' }
+      ] as f (f.id)}
+        <button
+          type="button"
+          onclick={() => switchFabric(f.id as FabricType)}
+          class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.fabricType === f.id
+            ? 'bg-[#00C49F] text-[#0F141C] font-extrabold shadow-md shadow-[#00C49F]/30 ring-1 ring-white/30'
+            : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
+          title={f.title}
+        >
+          <span>{f.emoji}</span>
+          <span class="hidden sm:inline">{f.label}</span>
+        </button>
+      {/each}
+    </div>
   </div>
 
   <!-- Isolated WebGL Mount Container -->
@@ -163,110 +345,47 @@
   ></div>
 
   {#if isLoadingEngine}
-    <div class="absolute inset-0 z-20 bg-[#0F141C]/90 flex flex-col items-center justify-center gap-3 p-6 text-center">
+    <div class="absolute inset-0 z-40 bg-[#0F141C]/90 flex flex-col items-center justify-center gap-3 p-6 text-center">
       <div class="w-10 h-10 rounded-full border-2 border-[#0F52BA] border-t-[#00C49F] animate-spin"></div>
       <div class="text-sm font-semibold text-white">Caricamento Lazy Motore 3D (Three.js + KTX2 + Draco)…</div>
       <div class="text-xs text-[#94A3B8] font-mono-tabular">Proiezione UV 2048×2048 su mesh sartoriale PBR</div>
     </div>
   {:else if loadError}
-    <div class="absolute inset-0 z-20 bg-[#0F141C]/95 flex flex-col items-center justify-center gap-2 p-6 text-center">
+    <div class="absolute inset-0 z-40 bg-[#0F141C]/95 flex flex-col items-center justify-center gap-2 p-6 text-center">
       <div class="text-sm font-semibold text-[#EF4444]">{loadError}</div>
       <div class="text-xs text-[#94A3B8]">Utilizza la Vista 2D ad alta definizione 2048×2048.</div>
     </div>
   {/if}
 
-  <!-- Collapsible Bottom Control Dock (Zero Side-Panel Occlusion per Three.js Guidelines) -->
-  <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 w-[94%] max-w-2xl flex flex-col items-center">
+  <!-- Bottom Floating Fabric Finish Pill (Discreet, Zero Viewport Occlusion) -->
+  <div class="absolute bottom-3 right-3 z-10 hidden sm:flex items-center gap-1.5 p-1 bg-[#141B26]/85 backdrop-blur-md border border-[#2E3D56]/70 rounded-xl text-xs font-mono-tabular text-[#94A3B8] shadow-xl">
+    <span class="text-[10px] uppercase font-bold text-[#64748B] px-1">Tessuto:</span>
     <button
       type="button"
-      onclick={() => (dockCollapsed = !dockCollapsed)}
-      class="px-3 py-1 text-[11px] font-medium text-[#94A3B8] hover:text-white bg-[#1A2230] border border-b-0 border-[#2E3D56] rounded-t-lg cursor-pointer whitespace-nowrap"
+      onclick={() => switchFinish('PRO_VAPOR')}
+      class="px-2 py-0.5 rounded-lg transition-colors cursor-pointer {studio.activeKit.metadata?.finishType === 'PRO_VAPOR'
+        ? 'bg-[#253146] text-[#00C49F] font-semibold'
+        : 'hover:text-white'}"
     >
-      {dockCollapsed ? '▴ Mostra Controlli 3D' : '▾ Nascondi Controlli 3D'}
+      Vapor
     </button>
-
-    {#if !dockCollapsed}
-      <div class="w-full bg-[#1A2230]/95 border border-[#2E3D56] rounded-xl p-2.5 shadow-xl flex flex-wrap items-center justify-between gap-2">
-        <!-- Lighting Preset Selector (Studio 6500K vs Stadium 5400K) -->
-        <div class="inline-flex items-center gap-1 p-0.5 bg-[#0F141C] border border-[#2E3D56] rounded-lg">
-          <button
-            type="button"
-            onclick={() => switchLighting('studio')}
-            class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer {studio.lightingPreset === 'studio'
-              ? 'bg-[#0F52BA] text-white'
-              : 'text-[#94A3B8] hover:text-white'}"
-          >
-            Studio 6500K
-          </button>
-          <button
-            type="button"
-            onclick={() => switchLighting('stadium')}
-            class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer {studio.lightingPreset === 'stadium'
-              ? 'bg-[#0F52BA] text-white'
-              : 'text-[#94A3B8] hover:text-white'}"
-          >
-            Stadio 5400K
-          </button>
-        </div>
-
-        <!-- Fabric Finish Selector -->
-        <div class="inline-flex items-center gap-1 p-0.5 bg-[#0F141C] border border-[#2E3D56] rounded-lg">
-          <button
-            type="button"
-            onclick={() => switchFinish('PRO_VAPOR')}
-            class="px-2 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer {studio.activeKit.metadata?.finishType === 'PRO_VAPOR'
-              ? 'bg-[#253146] text-[#00C49F]'
-              : 'text-[#94A3B8] hover:text-white'}"
-          >
-            Vapor
-          </button>
-          <button
-            type="button"
-            onclick={() => switchFinish('MATTE_MESH')}
-            class="px-2 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer {studio.activeKit.metadata?.finishType === 'MATTE_MESH'
-              ? 'bg-[#253146] text-[#00C49F]'
-              : 'text-[#94A3B8] hover:text-white'}"
-          >
-            Matte
-          </button>
-          <button
-            type="button"
-            onclick={() => switchFinish('RETRO_SATIN')}
-            class="px-2 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer {studio.activeKit.metadata?.finishType === 'RETRO_SATIN'
-              ? 'bg-[#253146] text-[#00C49F]'
-              : 'text-[#94A3B8] hover:text-white'}"
-          >
-            Satin
-          </button>
-        </div>
-
-        <!-- Camera Orbit Quick Presets -->
-        <div class="inline-flex items-center gap-1">
-          <button
-            type="button"
-            onclick={() => engine?.setCameraAngle('FRONT')}
-            class="px-2.5 py-1 text-xs font-medium text-[#94A3B8] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
-          >
-            Fronte
-          </button>
-          <button
-            type="button"
-            onclick={() => engine?.setCameraAngle('BACK')}
-            class="px-2.5 py-1 text-xs font-medium text-[#94A3B8] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-md cursor-pointer whitespace-nowrap"
-          >
-            Retro
-          </button>
-          <button
-            type="button"
-            onclick={toggleAutoRotate}
-            class="px-2.5 py-1 text-xs font-medium rounded-md border border-[#2E3D56] cursor-pointer whitespace-nowrap {autoRotate
-              ? 'bg-[#00C49F] text-[#0F141C] font-semibold'
-              : 'bg-[#0F141C] text-[#94A3B8] hover:text-white'}"
-          >
-            360°
-          </button>
-        </div>
-      </div>
-    {/if}
+    <button
+      type="button"
+      onclick={() => switchFinish('MATTE_MESH')}
+      class="px-2 py-0.5 rounded-lg transition-colors cursor-pointer {studio.activeKit.metadata?.finishType === 'MATTE_MESH'
+        ? 'bg-[#253146] text-[#00C49F] font-semibold'
+        : 'hover:text-white'}"
+    >
+      Matte
+    </button>
+    <button
+      type="button"
+      onclick={() => switchFinish('RETRO_SATIN')}
+      class="px-2 py-0.5 rounded-lg transition-colors cursor-pointer {studio.activeKit.metadata?.finishType === 'RETRO_SATIN'
+        ? 'bg-[#253146] text-[#00C49F] font-semibold'
+        : 'hover:text-white'}"
+    >
+      Satin
+    </button>
   </div>
 </div>

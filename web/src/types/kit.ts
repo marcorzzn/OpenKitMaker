@@ -19,7 +19,7 @@ export type LayerType =
   | 'TEXT_NAME'
   | 'NUMBER';
 
-export type BlendMode = 'NORMAL' | 'MULTIPLY' | 'OVERLAY';
+export type BlendMode = 'NORMAL' | 'MULTIPLY' | 'OVERLAY' | 'SCREEN';
 
 export type PatternStyle =
   | 'VERTICAL_STRIPES'
@@ -30,7 +30,11 @@ export type PatternStyle =
   | 'CHECKERED_GEOMETRIC'
   | 'CROSS_GRID'
   | 'PINSTRIPES'
-  | 'RADIAL_RAYS';
+  | 'RADIAL_RAYS'
+  | 'HEXAGONS'
+  | 'WAVES'
+  | 'CAMOUFLAGE'
+  | 'ABSTRACT_GEOMETRIC';
 
 export type CollarStyle =
   | 'ROUND_CREW'
@@ -52,6 +56,13 @@ export type BadgeShape =
 
 export type BadgePosition = 'LEFT_CHEST' | 'CENTER_CHEST' | 'RIGHT_CHEST';
 
+export type LightingPreset = 'studio' | 'stadium' | 'sunset' | 'radiant';
+export type ViewportBackground = 'dark' | 'neutral' | 'pitch';
+export type CameraPreset = 'FRONT' | 'BACK' | 'LEFT' | 'RIGHT';
+export type FabricType = 'MESH' | 'POLYESTER' | 'COTTON' | 'JACQUARD';
+export type ExportResolution = 2048 | 4096;
+export type ExportFormatType = 'PNG_2K' | 'PNG_4K' | 'ZIP_FULL_KIT' | 'PBR_BUNDLE' | 'GLB_3D';
+
 export interface Decal {
   id: string;
   shape: 'HEXAGON' | 'SHIELD' | 'DIAMOND' | 'CIRCLE' | 'CHEVRON' | 'STAR_8';
@@ -69,6 +80,8 @@ export interface LayerProperties {
   stripeCount?: number;
   stripeWidth?: number;
   angle?: number;
+  patternScale?: number;
+  patternRotation?: number;
 
   // COLLAR
   collarStyle?: CollarStyle;
@@ -83,6 +96,10 @@ export interface LayerProperties {
   sponsorLabel?: string;
   scale?: number;
   offsetY?: number;
+  offsetX?: number;
+  posX?: number;
+  posY?: number;
+  snappedToGuide?: boolean;
 
   // BADGE (strictly geometric crest)
   badgeShape?: BadgeShape;
@@ -123,7 +140,10 @@ export interface KitMetadata {
   tags: string[];
   thumbnailDataUrl?: string; // 512x512 minikit PNG data URL
   finishType: 'MATTE_MESH' | 'PRO_VAPOR' | 'RETRO_SATIN';
-  lightingPreset: 'studio' | 'stadium';
+  fabricType?: FabricType;
+  lightingPreset: LightingPreset;
+  viewportBackground?: ViewportBackground;
+  showAnatomicalView?: boolean;
   decals?: Decal[];
 }
 
@@ -198,4 +218,4 @@ export interface KitManifestV1 {
 }
 
 export type EditorViewMode = '2D' | '3D' | 'SPLIT';
-export type LightingPreset = 'studio' | 'stadium';
+

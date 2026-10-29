@@ -37,16 +37,26 @@ class PngExporter @AssistedInject constructor(
         val garmentType = runCatching { com.openkitmaker.android.domain.GarmentType.valueOf(garmentTypeName) }
             .getOrDefault(com.openkitmaker.android.domain.GarmentType.JERSEY)
 
+        val resolution = inputData.getInt(KEY_RESOLUTION, TextureEngine.FULL_RESOLUTION)
+
         try {
-            val bitmap = TextureEngine.compositeGarmentBitmap(
+            val baseBitmap = TextureEngine.compositeGarmentBitmap(
                 kit = kit,
                 garmentType = garmentType,
                 width = TextureEngine.FULL_RESOLUTION,
                 height = TextureEngine.FULL_RESOLUTION
             )
 
+            val bitmap = if (resolution == 4096) {
+                val scaled = Bitmap.createScaledBitmap(baseBitmap, 4096, 4096, true)
+                baseBitmap.recycle()
+                scaled
+            } else {
+                baseBitmap
+            }
+
             val prefix = garmentType.name.lowercase()
-            val fileName = "${prefix}_${kit.id}_2048.png"
+            val fileName = "${prefix}_${kit.id}_${resolution}.png"
             val savedUri = writePngToMediaStore(appContext, fileName, bitmap)
             bitmap.recycle()
 
@@ -70,6 +80,7 @@ class PngExporter @AssistedInject constructor(
     companion object {
         const val KEY_KIT_ID = "kit_id"
         const val KEY_GARMENT_TYPE = "garment_type"
+        const val KEY_RESOLUTION = "resolution"
         const val KEY_OUTPUT_URI = "output_uri"
         const val KEY_FILE_NAME = "file_name"
         const val KEY_ERROR_MESSAGE = "error_message"

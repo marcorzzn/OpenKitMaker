@@ -536,6 +536,7 @@ object TextureEngine {
                 BlendMode.NORMAL -> null
                 BlendMode.MULTIPLY -> PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
                 BlendMode.OVERLAY -> PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+                BlendMode.SCREEN -> PorterDuffXfermode(PorterDuff.Mode.SCREEN)
             }
         }
 
@@ -708,6 +709,113 @@ object TextureEngine {
                     }
                 }
             }
+            PatternStyle.HEXAGONS -> {
+                val scale = layer.properties.patternScale.coerceIn(0.2f, 5f)
+                val rot = layer.properties.patternRotation
+                val radius = (w * 0.035f * scale).coerceAtLeast(16f)
+                canvas.save()
+                canvas.rotate(rot, w / 2f, h * 0.36f)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = (w * 0.0028f * scale).coerceAtLeast(2f)
+                paint.color = col1
+                var row = 0
+                var y = -h * 0.2f
+                while (y < h * 0.9f) {
+                    val offsetX = if (row % 2 == 1) radius * 1.5f else 0f
+                    var x = -w * 0.2f + offsetX
+                    while (x < w * 1.2f) {
+                        drawPolygon(canvas, x, y, radius, 6, paint)
+                        x += radius * 3f
+                    }
+                    y += radius * 0.866f
+                    row++
+                }
+                canvas.restore()
+            }
+            PatternStyle.WAVES -> {
+                val scale = layer.properties.patternScale.coerceIn(0.2f, 5f)
+                val rot = layer.properties.patternRotation
+                canvas.save()
+                canvas.rotate(rot, w / 2f, h * 0.36f)
+                val wavesCount = (freq * 1.5f * scale).toInt().coerceIn(3, 30)
+                val waveH = (h * 0.72f) / wavesCount
+                val amplitude = waveH * 0.45f
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = (w * 0.006f * scale).coerceAtLeast(3f)
+                paint.color = col1
+                for (i in 0 until wavesCount) {
+                    val baseWaveY = i * waveH
+                    val path = Path()
+                    var x = 0f
+                    path.moveTo(0f, baseWaveY + sin(0.0).toFloat() * amplitude)
+                    val step = w / 32f
+                    while (x <= w) {
+                        val y = baseWaveY + sin((x / w) * Math.PI * 4.0 * scale).toFloat() * amplitude
+                        path.lineTo(x, y)
+                        x += step
+                    }
+                    canvas.drawPath(path, paint)
+                }
+                canvas.restore()
+            }
+            PatternStyle.CAMOUFLAGE -> {
+                val scale = layer.properties.patternScale.coerceIn(0.2f, 5f)
+                val rot = layer.properties.patternRotation
+                canvas.save()
+                canvas.rotate(rot, w / 2f, h * 0.36f)
+                paint.style = Paint.Style.FILL
+                val cols = (8 * scale).toInt().coerceIn(3, 20)
+                val rows = (12 * scale).toInt().coerceIn(4, 25)
+                val stepX = w / cols
+                val stepY = (h * 0.72f) / rows
+                for (r in 0 until rows) {
+                    for (c in 0 until cols) {
+                        val pseudoSeed = (r * 17 + c * 31 + (c * r * 13)) % 100
+                        if (pseudoSeed > 35) {
+                            val blobX = (c + 0.5f) * stepX + ((pseudoSeed % 7) - 3) * (stepX * 0.08f)
+                            val blobY = (r + 0.5f) * stepY + (((pseudoSeed * 3) % 7) - 3) * (stepY * 0.08f)
+                            val radius = (stepX * 0.42f) * (0.6f + (pseudoSeed % 40) / 100f)
+                            paint.color = if (pseudoSeed % 2 == 0) col1 else col2
+                            val oval = RectF(blobX - radius * 1.3f, blobY - radius * 0.8f, blobX + radius * 1.3f, blobY + radius * 0.8f)
+                            canvas.save()
+                            canvas.rotate((pseudoSeed * 11).toFloat(), blobX, blobY)
+                            canvas.drawRoundRect(oval, radius * 0.5f, radius * 0.5f, paint)
+                            canvas.restore()
+                        }
+                    }
+                }
+                canvas.restore()
+            }
+            PatternStyle.ABSTRACT_GEOMETRIC -> {
+                val scale = layer.properties.patternScale.coerceIn(0.2f, 5f)
+                val rot = layer.properties.patternRotation
+                canvas.save()
+                canvas.rotate(rot, w / 2f, h * 0.36f)
+                val diagCount = (freq * 2 * scale).toInt().coerceIn(4, 30)
+                val diagStep = (w * 1.5f) / diagCount
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = (w * 0.007f * scale).coerceAtLeast(3f)
+                for (i in 0 until diagCount) {
+                    paint.color = if (i % 2 == 0) col1 else col2
+                    val xStart = -w * 0.25f + i * diagStep
+                    canvas.drawLine(xStart, 0f, xStart + w * 0.5f, h * 0.72f, paint)
+                    if (i % 3 == 0) {
+                        val triPath = Path().apply {
+                            val tx = xStart + w * 0.25f
+                            val ty = h * 0.36f
+                            val tr = w * 0.03f * scale
+                            moveTo(tx, ty - tr)
+                            lineTo(tx + tr, ty + tr)
+                            lineTo(tx - tr, ty + tr)
+                            close()
+                        }
+                        paint.style = Paint.Style.FILL
+                        canvas.drawPath(triPath, paint)
+                        paint.style = Paint.Style.STROKE
+                    }
+                }
+                canvas.restore()
+            }
         }
     }
 
@@ -863,10 +971,12 @@ object TextureEngine {
         paint: Paint
     ) {
         val decal = layer.properties.decal
+        val offX = (layer.properties.offsetX + (layer.properties.posX * 1000f)) * (w / 2048f)
+        val offY = (layer.properties.offsetY + (layer.properties.posY * 1000f)) * (h / 2048f)
         // Left chest position on front UV island
-        val cx = w * 0.335f + (decal?.posX ?: 0f) * w * 0.05f
-        val cy = h * 0.22f + (decal?.posY ?: 0f) * h * 0.05f
-        val radius = w * 0.034f * (decal?.scale ?: 1f)
+        val cx = w * 0.335f + (decal?.posX ?: 0f) * w * 0.05f + offX
+        val cy = h * 0.22f + (decal?.posY ?: 0f) * h * 0.05f + offY
+        val radius = w * 0.034f * (decal?.scale ?: 1f) * layer.properties.scale
 
         paint.style = Paint.Style.FILL
         paint.color = primaryInt
@@ -894,20 +1004,22 @@ object TextureEngine {
         paint: Paint
     ) {
         val text = layer.properties.textValue.ifBlank { "AERO DYNAMICS" }
-        val cx = w * 0.26f
-        val cy = h * 0.36f
+        val offX = (layer.properties.offsetX + (layer.properties.posX * 1000f)) * (w / 2048f)
+        val offY = (layer.properties.offsetY + (layer.properties.posY * 1000f)) * (h / 2048f)
+        val cx = w * 0.26f + offX
+        val cy = h * 0.36f + offY
 
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        paint.textSize = (layer.properties.fontSize.coerceIn(28f, 96f)) * (w / 2048f) * 1.4f
+        paint.textSize = (layer.properties.fontSize.coerceIn(28f, 96f)) * (w / 2048f) * 1.4f * layer.properties.scale
 
         // Geometric framing bar above sponsor
         paint.style = Paint.Style.FILL
         paint.color = secondaryInt
         canvas.drawRoundRect(
-            cx - w * 0.08f,
+            cx - w * 0.08f * layer.properties.scale,
             cy - h * 0.052f,
-            cx + w * 0.08f,
+            cx + w * 0.08f * layer.properties.scale,
             cy - h * 0.042f,
             8f,
             8f,

@@ -38,6 +38,8 @@ function mapBlendMode(mode: BlendMode): GlobalCompositeOperation {
       return 'multiply';
     case 'OVERLAY':
       return 'overlay';
+    case 'SCREEN':
+      return 'screen';
     case 'NORMAL':
     default:
       return 'source-over';
@@ -238,6 +240,120 @@ function renderPatternInRect(
       ctx.closePath();
       ctx.fill();
     }
+  } else if (style === 'HEXAGONS') {
+    const scale = Math.max(0.2, Math.min(5, Number(layer.properties.patternScale ?? 1.0)));
+    const rotDeg = Number(layer.properties.patternRotation ?? angleDeg);
+    const radius = Math.max(16, 72 * scale);
+    const cx = rx + rw / 2;
+    const cy = ry + rh / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rotDeg * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+    ctx.strokeStyle = layer.color;
+    ctx.lineWidth = Math.max(2, 6 * scale);
+    let row = 0;
+    for (let y = ry - 200; y < ry + rh + 200; y += radius * 0.866) {
+      const offsetX = row % 2 === 1 ? radius * 1.5 : 0;
+      for (let x = rx - 200 + offsetX; x < rx + rw + 200; x += radius * 3) {
+        drawPolygon(ctx, x, y, radius, 6);
+        ctx.stroke();
+        if (secColor && (row + Math.floor(x / (radius * 3))) % 3 === 0) {
+          ctx.fillStyle = secColor;
+          drawPolygon(ctx, x, y, radius * 0.5, 6);
+          ctx.fill();
+        }
+      }
+      row++;
+    }
+    ctx.restore();
+  } else if (style === 'WAVES') {
+    const scale = Math.max(0.2, Math.min(5, Number(layer.properties.patternScale ?? 1.0)));
+    const rotDeg = Number(layer.properties.patternRotation ?? angleDeg);
+    const cx = rx + rw / 2;
+    const cy = ry + rh / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rotDeg * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+    const wavesCount = Math.max(3, Math.min(36, Math.round(count * 2 * scale)));
+    const waveH = rh / wavesCount;
+    const amplitude = waveH * 0.45;
+    ctx.lineWidth = Math.max(3, 10 * scale);
+    for (let i = 0; i <= wavesCount + 2; i++) {
+      const baseWaveY = ry + (i - 1) * waveH;
+      ctx.strokeStyle = i % 2 === 0 ? layer.color : secColor || layer.color;
+      ctx.beginPath();
+      const step = rw / 40;
+      for (let x = rx - 100; x <= rx + rw + 100; x += step) {
+        const y = baseWaveY + Math.sin(((x - rx) / rw) * Math.PI * 4 * scale) * amplitude;
+        if (x === rx - 100) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (style === 'CAMOUFLAGE') {
+    const scale = Math.max(0.2, Math.min(5, Number(layer.properties.patternScale ?? 1.0)));
+    const rotDeg = Number(layer.properties.patternRotation ?? angleDeg);
+    const cx = rx + rw / 2;
+    const cy = ry + rh / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rotDeg * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+    const cols = Math.max(3, Math.min(20, Math.round(7 * scale)));
+    const rows = Math.max(4, Math.min(25, Math.round(11 * scale)));
+    const stepX = rw / cols;
+    const stepY = rh / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const pseudoSeed = (r * 17 + c * 31 + (c * r * 13)) % 100;
+        if (pseudoSeed > 35) {
+          const blobX = rx + (c + 0.5) * stepX + ((pseudoSeed % 7) - 3) * (stepX * 0.08);
+          const blobY = ry + (r + 0.5) * stepY + (((pseudoSeed * 3) % 7) - 3) * (stepY * 0.08);
+          const rad = (stepX * 0.42) * (0.6 + (pseudoSeed % 40) / 100);
+          ctx.fillStyle = pseudoSeed % 2 === 0 ? layer.color : secColor || layer.color;
+          ctx.save();
+          ctx.translate(blobX, blobY);
+          ctx.rotate((pseudoSeed * 11 * Math.PI) / 180);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rad * 1.3, rad * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+    ctx.restore();
+  } else if (style === 'ABSTRACT_GEOMETRIC') {
+    const scale = Math.max(0.2, Math.min(5, Number(layer.properties.patternScale ?? 1.0)));
+    const rotDeg = Number(layer.properties.patternRotation ?? angleDeg);
+    const cx = rx + rw / 2;
+    const cy = ry + rh / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rotDeg * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+    const diagCount = Math.max(4, Math.min(30, Math.round(count * 2.5 * scale)));
+    const diagStep = (rw * 1.5) / diagCount;
+    ctx.lineWidth = Math.max(3, 12 * scale);
+    for (let i = 0; i < diagCount; i++) {
+      ctx.strokeStyle = i % 2 === 0 ? layer.color : secColor || layer.color;
+      const xStart = rx - rw * 0.25 + i * diagStep;
+      ctx.beginPath();
+      ctx.moveTo(xStart, ry - 100);
+      ctx.lineTo(xStart + rw * 0.5, ry + rh + 100);
+      ctx.stroke();
+      if (i % 3 === 0) {
+        ctx.fillStyle = i % 2 === 0 ? secColor || layer.color : layer.color;
+        const tx = xStart + rw * 0.25;
+        const ty = ry + rh * 0.45;
+        const tr = rw * 0.04 * scale;
+        drawPolygon(ctx, tx, ty, tr, 3);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   ctx.restore();
@@ -457,7 +573,10 @@ function renderBadgeLayer(
   if (pos === 'CENTER_CHEST') cx = UV_REGIONS.front.x + 512;
   else if (pos === 'RIGHT_CHEST') cx = UV_REGIONS.front.x + 349;
 
-  const cy = UV_REGIONS.front.y + 340;
+  const offX = Number(layer.properties.offsetX ?? 0) + Number(layer.properties.posX ?? 0) * 1000;
+  const offY = Number(layer.properties.offsetY ?? 0) + Number(layer.properties.posY ?? 0) * 1000;
+  cx += offX;
+  const cy = UV_REGIONS.front.y + 340 + offY;
   const r = 74 * scale;
 
   ctx.save();
@@ -535,9 +654,10 @@ function renderSponsorLayer(
     .slice(0, 14)
     .toUpperCase();
   const scale = Math.max(0.5, Math.min(1.5, Number(layer.properties.scale ?? 1.0)));
-  const offsetY = Number(layer.properties.offsetY ?? 20);
+  const offsetX = Number(layer.properties.offsetX ?? 0) + Number(layer.properties.posX ?? 0) * 1000;
+  const offsetY = Number(layer.properties.offsetY ?? 20) + Number(layer.properties.posY ?? 0) * 1000;
 
-  const cx = UV_REGIONS.front.x + 512;
+  const cx = UV_REGIONS.front.x + 512 + offsetX;
   const cy = UV_REGIONS.front.y + 560 + offsetY;
   const primary = layer.color || '#FFFFFF';
   const secondary = layer.secondaryColor || '#00C49F';

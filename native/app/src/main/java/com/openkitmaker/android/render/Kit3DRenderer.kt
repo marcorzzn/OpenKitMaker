@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.google.android.filament.LightManager
 import com.google.android.filament.Texture
+import com.openkitmaker.android.domain.FabricType
 import com.openkitmaker.android.domain.LightingMode
+import com.openkitmaker.android.domain.ViewportBackground
 import com.openkitmaker.android.ui.editor.GarmentSelection
 import io.github.sceneview.Scene
 import io.github.sceneview.math.Position
@@ -49,12 +51,15 @@ fun Kit3DRenderer(
     socksBitmap: Bitmap? = null,
     selectedGarment: GarmentSelection = GarmentSelection.ALL,
     lightingMode: LightingMode,
+    viewportBackground: ViewportBackground = ViewportBackground.DARK_SOLID,
+    fabricType: FabricType = FabricType.MESH,
     roughness: Float,
     metalness: Float,
     yawDegrees: Float,
     pitchDegrees: Float,
     zoomLevel: Float,
     showMannequin: Boolean = true,
+    showAnatomicalView: Boolean = false,
     onOrbitChange: (deltaYaw: Float, deltaPitch: Float, zoomFactor: Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,9 +76,12 @@ fun Kit3DRenderer(
     var currentShortsTexture by remember { mutableStateOf<Texture?>(null) }
     var currentSocksTexture by remember { mutableStateOf<Texture?>(null) }
 
-    val fabricNormalTexture = remember(engine) {
-        MaterialFactory.createProceduralFabricNormalTexture(engine)
+    val fabricTextures = remember(engine) {
+        FabricType.entries.associateWith { type ->
+            MaterialFactory.createProceduralFabricNormalTexture(engine, type)
+        }
     }
+    val activeNormalTexture = fabricTextures[fabricType] ?: fabricTextures.getValue(FabricType.MESH)
 
     val cameraNode = rememberCameraNode(engine) {
         position = Position(x = 0.0f, y = 0.1f, z = 2.65f)
@@ -164,9 +172,9 @@ fun Kit3DRenderer(
                                 MaterialFactory.applyKitPbrParameters(
                                     materialInstance = mi,
                                     albedoTexture = activeTex,
-                                    normalTexture = fabricNormalTexture,
-                                    roughness = roughness.coerceAtLeast(0.75f),
-                                    metalness = metalness.coerceAtMost(0.05f)
+                                    normalTexture = activeNormalTexture,
+                                    roughness = fabricType.defaultRoughness,
+                                    metalness = fabricType.defaultMetalness
                                 )
                             }
                         }
@@ -222,11 +230,15 @@ fun Kit3DRenderer(
             currentJerseyTexture?.let { engine.destroyTexture(it) }
             currentShortsTexture?.let { engine.destroyTexture(it) }
             currentSocksTexture?.let { engine.destroyTexture(it) }
-            engine.destroyTexture(fabricNormalTexture)
+            fabricTextures.values.forEach { engine.destroyTexture(it) }
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(viewportBackground.hexColor))
+    ) {
         Scene(
             modifier = Modifier.fillMaxSize(),
             engine = engine,

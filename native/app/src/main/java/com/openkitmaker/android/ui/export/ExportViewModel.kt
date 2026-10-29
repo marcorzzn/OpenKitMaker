@@ -1,4 +1,4 @@
-// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP
+// Implements: SCR-EXPORT / FUN-EXPORT-PNG / FUN-EXPORT-ZIP, STEP 4
 package com.openkitmaker.android.ui.export
 
 import android.content.Context
@@ -11,6 +11,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.openkitmaker.android.data.repository.KitRepository
+import com.openkitmaker.android.domain.ExportResolution
 import com.openkitmaker.android.domain.Kit
 import com.openkitmaker.android.export.PngExporter
 import com.openkitmaker.android.export.ZipExporter
@@ -43,6 +44,9 @@ class ExportViewModel @Inject constructor(
     private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
     val previewBitmap: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
 
+    private val _selectedResolution = MutableStateFlow(ExportResolution.RES_2K)
+    val selectedResolution: StateFlow<ExportResolution> = _selectedResolution.asStateFlow()
+
     private val _exportStatus = MutableStateFlow<String?>(null)
     val exportStatus: StateFlow<String?> = _exportStatus.asStateFlow()
 
@@ -62,16 +66,22 @@ class ExportViewModel @Inject constructor(
         }
     }
 
+    fun setResolution(res: ExportResolution) {
+        _selectedResolution.value = res
+    }
+
     fun exportGarmentPngLossless(garmentType: com.openkitmaker.android.domain.GarmentType) {
         val current = _kit.value ?: return
+        val res = _selectedResolution.value
         _isExporting.value = true
-        _exportStatus.value = "Avvio WorkManager per texture ${garmentType.name} (2048×2048)..."
+        _exportStatus.value = "Avvio WorkManager per texture ${garmentType.name} (${res.pixelSize}×${res.pixelSize})..."
 
         val request = OneTimeWorkRequestBuilder<PngExporter>()
             .setInputData(
                 workDataOf(
                     PngExporter.KEY_KIT_ID to current.id,
-                    PngExporter.KEY_GARMENT_TYPE to garmentType.name
+                    PngExporter.KEY_GARMENT_TYPE to garmentType.name,
+                    PngExporter.KEY_RESOLUTION to res.pixelSize
                 )
             )
             .build()
@@ -90,7 +100,48 @@ class ExportViewModel @Inject constructor(
         _exportStatus.value = "Avvio WorkManager per kit_${current.id}.zip..."
 
         val request = OneTimeWorkRequestBuilder<ZipExporter>()
-            .setInputData(workDataOf(PngExporter.KEY_KIT_ID to current.id))
+            .setInputData(
+                workDataOf(
+                    PngExporter.KEY_KIT_ID to current.id,
+                    ZipExporter.KEY_EXPORT_MODE to ZipExporter.MODE_INTEROPERABLE_ZIP
+                )
+            )
+            .build()
+
+        workManager.enqueue(request)
+        observeWork(request.id)
+    }
+
+    fun exportPbrBundle() {
+        val current = _kit.value ?: return
+        _isExporting.value = true
+        _exportStatus.value = "Generazione Bundle Materiali PBR (pbr_bundle_${current.id}.zip)..."
+
+        val request = OneTimeWorkRequestBuilder<ZipExporter>()
+            .setInputData(
+                workDataOf(
+                    PngExporter.KEY_KIT_ID to current.id,
+                    ZipExporter.KEY_EXPORT_MODE to ZipExporter.MODE_PBR_BUNDLE
+                )
+            )
+            .build()
+
+        workManager.enqueue(request)
+        observeWork(request.id)
+    }
+
+    fun exportGlb3D() {
+        val current = _kit.value ?: return
+        _isExporting.value = true
+        _exportStatus.value = "Esportazione Modello 3D (kit_${current.id}.glb)..."
+
+        val request = OneTimeWorkRequestBuilder<ZipExporter>()
+            .setInputData(
+                workDataOf(
+                    PngExporter.KEY_KIT_ID to current.id,
+                    ZipExporter.KEY_EXPORT_MODE to ZipExporter.MODE_3D_GLB
+                )
+            )
             .build()
 
         workManager.enqueue(request)

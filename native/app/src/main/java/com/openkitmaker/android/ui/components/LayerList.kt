@@ -28,6 +28,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.openkitmaker.android.domain.BlendMode
 import com.openkitmaker.android.domain.Layer
+import com.openkitmaker.android.domain.LayerType
+
+fun getLayerIcon(type: LayerType): String {
+    return when (type) {
+        LayerType.BASE -> "👕"
+        LayerType.PATTERN -> "⚡"
+        LayerType.COLLAR -> "👔"
+        LayerType.SLEEVES -> "💪"
+        LayerType.SPONSOR -> "⭐"
+        LayerType.BADGE -> "🛡️"
+        LayerType.TEXT_NAME -> "🔤"
+        LayerType.NUMBER -> "🔢"
+    }
+}
 
 @Composable
 fun LayerList(
@@ -42,7 +56,7 @@ fun LayerList(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         layers.sortedByDescending { it.zIndex }.forEach { layer ->
             val isSelected = layer.id == selectedLayerId
@@ -53,7 +67,7 @@ fun LayerList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onSelectLayer(layer.id) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = if (isSelected) Color(0xFF253146) else Color(0xFF1A2230)
                 ),
@@ -74,39 +88,64 @@ fun LayerList(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
-                                    .background(layerColor, CircleShape)
-                                    .border(1.5.dp, Color.White.copy(alpha = 0.4f), CircleShape)
-                            )
+                                    .size(36.dp)
+                                    .background(layerColor, RoundedCornerShape(10.dp))
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = getLayerIcon(layer.type),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
                             Checkbox(
                                 checked = layer.visible,
                                 onCheckedChange = { onToggleVisibility(layer.id) }
                             )
+
                             Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = layer.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFF0F141C), RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "z:${layer.zIndex}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFF00C49F)
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = layer.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "${layer.type.labelIt} · Stack z:${layer.zIndex} · ${(layer.opacity * 100).toInt()}%",
+                                    text = "${layer.type.labelIt} · ${(layer.opacity * 100).toInt()}% opacità",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF94A3B8)
                                 )
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             TextButton(onClick = { onMoveLayer(layer.id, +1) }) {
-                                Text("▲ Su", color = Color(0xFF00C49F))
+                                Text("▲", color = Color(0xFF00C49F), style = MaterialTheme.typography.titleMedium)
                             }
                             TextButton(onClick = { onMoveLayer(layer.id, -1) }) {
-                                Text("▼ Giù", color = Color(0xFF94A3B8))
+                                Text("▼", color = Color(0xFF94A3B8), style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
@@ -115,9 +154,9 @@ fun LayerList(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF0F141C), RoundedCornerShape(8.dp))
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .background(Color(0xFF0F141C), RoundedCornerShape(12.dp))
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -131,7 +170,8 @@ fun LayerList(
                                 Text(
                                     text = "${(layer.opacity * 100).toInt()}%",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = Color(0xFF00C49F)
+                                    color = Color(0xFF00C49F),
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                             Slider(
