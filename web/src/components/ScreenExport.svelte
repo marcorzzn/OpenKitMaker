@@ -218,7 +218,7 @@
   }
 </script>
 
-<section class="max-w-7xl mx-auto px-6 py-10 space-y-8">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 overflow-hidden">
   <!-- Header (SCR-EXPORT) -->
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#2E3D56] pb-6">
     <div class="space-y-1.5">
@@ -352,12 +352,12 @@
   {/if}
 
   <!-- 1-Click Social & WhatsApp Showcase Banner (Hero Action) -->
-  <div class="bg-gradient-to-r from-[#0F52BA]/25 via-[#1A2230] to-[#00C49F]/20 border-2 border-[#00C49F]/50 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl shadow-[#00C49F]/10">
+  <div class="bg-gradient-to-r from-[#0F52BA]/25 via-[#1A2230] to-[#00C49F]/20 border-2 border-[#00C49F]/50 rounded-2xl p-5 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl shadow-[#00C49F]/10">
     <div class="space-y-2">
       <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#0F141C] text-[#00C49F] text-xs font-mono-tabular border border-[#00C49F]/40 font-semibold">
         <span>📱</span> CONDIVISIONE ISTANTANEA
       </div>
-      <h2 class="text-2xl font-bold font-display text-white">
+      <h2 class="text-xl sm:text-2xl font-bold font-display text-white">
         Scarica Immagine per WhatsApp & Social (1080×1080 HD)
       </h2>
       <p class="text-sm text-[#94A3B8] max-w-2xl leading-relaxed">
@@ -369,7 +369,7 @@
       type="button"
       disabled={isExporting}
       onclick={handleExportSocial}
-      class="px-6 py-4 rounded-xl bg-gradient-to-r from-[#00C49F] to-[#10B981] hover:from-[#10B981] hover:to-[#059669] text-[#0F141C] font-extrabold text-sm sm:text-base transition-all shadow-lg shadow-[#00C49F]/30 hover:scale-102 cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-2"
+      class="px-5 sm:px-6 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-[#00C49F] to-[#10B981] hover:from-[#10B981] hover:to-[#059669] text-[#0F141C] font-extrabold text-sm sm:text-base transition-all shadow-lg shadow-[#00C49F]/30 hover:scale-102 cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-2"
     >
       <span>📲</span>
       <span>Scarica per WhatsApp & Social</span>
@@ -381,7 +381,7 @@
     <!-- Format 1: Texture 2D ad Altissima Risoluzione (2K / 4K) -->
     <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-6 flex flex-col justify-between space-y-5">
       <div class="space-y-3">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="text-xs text-[#94A3B8] font-mono-tabular">EXPORT 2D · PNG LOSSLESS</div>
           <!-- Resolution Selector -->
           <div class="flex items-center gap-1 bg-[#0F141C] p-1 rounded-lg border border-[#2E3D56]">
@@ -390,14 +390,14 @@
               onclick={() => selectedResolution = 2048}
               class="px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer {selectedResolution === 2048 ? 'bg-[#0F52BA] text-white font-semibold' : 'text-[#94A3B8] hover:text-white'}"
             >
-              2K (2048)
+              2K (2048×2048)
             </button>
             <button
               type="button"
               onclick={() => selectedResolution = 4096}
               class="px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer {selectedResolution === 4096 ? 'bg-[#00C49F] text-[#0F141C] font-bold' : 'text-[#94A3B8] hover:text-white'}"
             >
-              ✨ 4K Ultra HD
+              ✨ 4K Ultra HD (4096×4096)
             </button>
           </div>
         </div>
@@ -410,7 +410,7 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-3 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <button
           type="button"
           disabled={isExporting}

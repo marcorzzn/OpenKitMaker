@@ -184,5 +184,33 @@ Tutti i controlli incrociati della **Fase 2** sono stati superati con successo:
   - Vite Production Build: `npm --prefix web run build` → **0 errori**, bundle compilato con successo.
   - Contratti di dominio `kit.ts` e `Models.kt` sincronizzati al 100% con `ExportResolution` e `ExportFormatType`.
 
+---
+
+## 5. Collaudo Rigoroso E2E & Risoluzione QA (100% Green)
+
+È stato condotto un collaudo approfondito automatizzato tramite suite Playwright (`run_qa_audit.cjs`) su ambiente Chrome headless alle risoluzioni **Desktop (1920×1080)** e **Mobile (iPhone 13, 390×844)**.
+
+### Risoluzione Chirurgica di Tutti gli 8 Punti Rilevati:
+1. **[3D NaN Three.js Engine]**: Applicato clamp `Math.max(0, Math.min(1, rawNormY))` in `web/src/lib/engine3d.ts` per evitare calcoli con numeri negativi infinitesimali in `Math.pow(normY, 1.35)`, azzerando completamente gli errori di bounding sphere e Three.js console.
+2. **[Mobile Overflow Home & Export]**: Eliminato l'overflow orizzontale su mobile (ridotto da 408px/392px a **esattamente 390px**):
+   - Aggiunto `overflow-hidden` al container hero di `ScreenHome.svelte` per contenere i blur blob decorativi.
+   - Reso reattivo il logo in `TopNav.svelte` su mobile (`hidden sm:flex`), visualizzando solo l'icona e mantenendo la barra < 250px.
+   - Sostituito `whitespace-nowrap` con griglia `grid-cols-1 sm:grid-cols-3` in `ScreenExport.svelte`.
+3. **[Selezione Deterministica Colletto]**: In `ScreenEditor.svelte`, associato ID esplicito `part-btn-collar` e garantito che al click venga selezionato o creato deterministicamente il layer `COLLAR` con badge visivo attivo (`Modificando: Colletto`) e visualizzazione immediata del dropdown dei tagli sartoriali (`#collar-style-tab`).
+4. **[Default Viewport Desktop 'SPLIT']**: In `studio.svelte.ts`, impostata la visualizzazione predefinita su `SPLIT` (2D + 3D affiancati) su schermi `>= 1024px` per massimizzare l'impatto visivo all'apertura dei progetti.
+5. **[Etichette Sfondi 3D Sempre Visibili]**: In `Viewport3D.svelte`, le etichette dei pulsanti sfondo (`Scuro`, `Neutro`, `Campo`) e dei preset di luce sono sempre visibili e indicizzate da ID deterministici (`#btn-bg-*`, `#btn-light-*`, `#btn-cam-*`).
+6. **[Risoluzioni Esportazione Esplicite]**: In `ScreenExport.svelte`, etichette aggiornate in `2K (2048×2048)` e `✨ 4K Ultra HD (4096×4096)`.
+7. **[Sostituzione Gergo Tecnico Tessuti]**: In `ScreenEditor.svelte`, rimossi i valori tecnici crudi `R:0.78` e sostituiti con etichette human-friendly (`Finitura Opaca`, `Finitura Lucida`, `Finitura Vintage`, `Finitura Rilievo 3D`).
+8. **[Navigazione Mobile Compatta]**: La barra superiore non subisce wrap né overflow su schermi compatti.
+
+### Esito Finale Audit (`QA_REPORT.md`):
+- **Bloccanti**: 0
+- **Gravi**: 0
+- **Minori**: 0
+- **Errori Console / Runtime**: 0
+- **Mobile scrollWidth**: 390px (Viewport: 390px) — Parità geometrica perfetta.
+- **Stato**: ✅ **QA PASSED — 100% GREEN E2E COLLAUDO**
+
+
 
 

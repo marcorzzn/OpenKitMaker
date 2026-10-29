@@ -191,6 +191,7 @@
       <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Vista:</span>
       <button
         type="button"
+        id="btn-cam-front"
         onclick={() => selectCameraPreset('FRONT')}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'FRONT' && !autoRotate
           ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
@@ -201,6 +202,7 @@
       </button>
       <button
         type="button"
+        id="btn-cam-back"
         onclick={() => selectCameraPreset('BACK')}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'BACK' && !autoRotate
           ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
@@ -211,6 +213,7 @@
       </button>
       <button
         type="button"
+        id="btn-cam-left"
         onclick={() => selectCameraPreset('LEFT')}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'LEFT' && !autoRotate
           ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
@@ -221,6 +224,7 @@
       </button>
       <button
         type="button"
+        id="btn-cam-right"
         onclick={() => selectCameraPreset('RIGHT')}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeCameraPreset === 'RIGHT' && !autoRotate
           ? 'bg-[#0F52BA] text-white shadow-sm shadow-[#0F52BA]/30'
@@ -231,6 +235,7 @@
       </button>
       <button
         type="button"
+        id="btn-cam-rotate"
         onclick={toggleAutoRotate}
         class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 {autoRotate
           ? 'bg-[#00C49F] text-[#0F141C] shadow-md shadow-[#00C49F]/30'
@@ -253,6 +258,7 @@
       ] as item (item.id)}
         <button
           type="button"
+          id="btn-light-{item.id}"
           onclick={() => switchLighting(item.id as LightingPreset)}
           class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.lightingPreset === item.id
             ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30'
@@ -269,6 +275,7 @@
     <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
       <button
         type="button"
+        id="btn-toggle-mannequin"
         onclick={() => studio.toggleMannequin()}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 {studio.showMannequin
           ? 'bg-[#253146] border-[#00C49F]/50 text-[#00C49F]'
@@ -280,6 +287,7 @@
       </button>
       <button
         type="button"
+        id="btn-toggle-anatomy"
         onclick={() => studio.toggleAnatomicalView()}
         class="px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 {studio.showAnatomicalView
           ? 'bg-[#00E5FF]/20 border-[#00E5FF]/70 text-[#00E5FF] shadow-sm shadow-[#00E5FF]/20 font-bold'
@@ -301,14 +309,15 @@
       ] as bg (bg.id)}
         <button
           type="button"
+          id="btn-bg-{bg.id}"
           onclick={() => switchBackground(bg.id as ViewportBackground)}
           class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.viewportBackground === bg.id
             ? 'bg-[#253146] text-white border border-[#38BDF8] shadow-sm'
             : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'}"
-          title="Sfondo: {bg.label}"
+          title="Sfondo 3D: {bg.label}"
         >
           <span>{bg.emoji}</span>
-          <span class="hidden sm:inline">{bg.label}</span>
+          <span>{bg.label}</span>
         </button>
       {/each}
     </div>
@@ -324,6 +333,7 @@
       ] as f (f.id)}
         <button
           type="button"
+          id="btn-fabric-{f.id.toLowerCase()}"
           onclick={() => switchFabric(f.id as FabricType)}
           class="px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1 {studio.fabricType === f.id
             ? 'bg-[#00C49F] text-[#0F141C] font-extrabold shadow-md shadow-[#00C49F]/30 ring-1 ring-white/30'

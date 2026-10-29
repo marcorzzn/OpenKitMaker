@@ -83,9 +83,11 @@
     const existing = studio.activeLayers.find((l) => l.type === type);
     if (existing) {
       studio.selectedLayerId = existing.id;
+      studio.activeLayerTypeFilter = type;
       return existing;
     }
     studio.addNewLayer(type);
+    studio.activeLayerTypeFilter = type;
     return studio.selectedLayer;
   }
 
@@ -94,6 +96,7 @@
     label: string;
     icon: string;
     desc: string;
+    finishLabel: string;
     roughness: number;
     metalness: number;
   }[] = [
@@ -102,6 +105,7 @@
       label: 'Mesh Traspirante',
       icon: '🎽',
       desc: 'Tessuto tecnico con micro-fori traspiranti',
+      finishLabel: 'Finitura Opaca',
       roughness: 0.78,
       metalness: 0.02,
     },
@@ -110,6 +114,7 @@
       label: 'Poliestere Lucido',
       icon: '✨',
       desc: 'Effetto sintetico moderno, lucido e brillante',
+      finishLabel: 'Finitura Lucida',
       roughness: 0.22,
       metalness: 0.12,
     },
@@ -118,6 +123,7 @@
       label: 'Cotone Anni \'90',
       icon: '👕',
       desc: 'Tessuto vintage pesante e opaco',
+      finishLabel: 'Finitura Vintage',
       roughness: 0.90,
       metalness: 0.01,
     },
@@ -126,6 +132,7 @@
       label: 'Jacquard Nobile',
       icon: '🏛️',
       desc: 'Trama damascata con rilievo geometrico 3D',
+      finishLabel: 'Finitura Rilievo 3D',
       roughness: 0.48,
       metalness: 0.06,
     },
@@ -620,15 +627,25 @@
         {#if activeEditorTab === 'COLOR_FABRIC'}
           <div class="p-4 space-y-4 max-h-[calc(100vh-210px)] overflow-y-auto">
             <!-- Garment Piece Selector -->
-            <div class="space-y-1.5">
-              <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Zona da Colorare:</span>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">Zona da Colorare:</span>
+                <span class="text-[11px] font-bold text-[#00C49F] px-2 py-0.5 rounded bg-[#0F141C] border border-[#2E3D56] flex items-center gap-1">
+                  <span>Modificando:</span>
+                  <span>{studio.selectedLayer?.name || 'Corpo Maglia'}</span>
+                </span>
+              </div>
               <div class="grid grid-cols-3 gap-1.5">
                 {#if studio.activeGarmentType === 'JERSEY'}
                   <button
                     type="button"
-                    onclick={() => studio.selectLayerByType('BASE')}
+                    id="part-btn-body"
+                    onclick={() => {
+                      const l = getOrCreateLayer('BASE');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👕</span>
@@ -636,9 +653,13 @@
                   </button>
                   <button
                     type="button"
-                    onclick={() => getOrCreateLayer('COLLAR')}
+                    id="part-btn-collar"
+                    onclick={() => {
+                      const l = getOrCreateLayer('COLLAR');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👔</span>
@@ -646,9 +667,13 @@
                   </button>
                   <button
                     type="button"
-                    onclick={() => getOrCreateLayer('SLEEVES')}
+                    id="part-btn-sleeves"
+                    onclick={() => {
+                      const l = getOrCreateLayer('SLEEVES');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'SLEEVES'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>💪</span>
@@ -657,9 +682,12 @@
                 {:else if studio.activeGarmentType === 'SHORTS'}
                   <button
                     type="button"
-                    onclick={() => studio.selectLayerByType('BASE')}
+                    onclick={() => {
+                      const l = getOrCreateLayer('BASE');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="col-span-3 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>🩳</span>
@@ -668,9 +696,12 @@
                 {:else}
                   <button
                     type="button"
-                    onclick={() => studio.selectLayerByType('BASE')}
+                    onclick={() => {
+                      const l = getOrCreateLayer('BASE');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>🧦</span>
@@ -678,9 +709,12 @@
                   </button>
                   <button
                     type="button"
-                    onclick={() => getOrCreateLayer('COLLAR')}
+                    onclick={() => {
+                      const l = getOrCreateLayer('COLLAR');
+                      if (l) studio.selectedLayerId = l.id;
+                    }}
                     class="col-span-2 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👔</span>
@@ -691,38 +725,40 @@
             </div>
 
             <!-- Contextual Collar / Sleeves options if selected -->
-            {#if studio.selectedLayer?.type === 'COLLAR'}
-              {@const activeLayer = studio.selectedLayer}
-              <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
-                <div>
-                  <label for="collar-style-tab" class="block text-xs text-[#94A3B8] mb-1">Taglio Colletto</label>
-                  <select
-                    id="collar-style-tab"
-                    value={activeLayer.properties.collarStyle || 'V_NECK'}
-                    onchange={(e) => studio.updateLayerProperty(activeLayer.id, 'collarStyle', (e.target as HTMLSelectElement).value)}
-                    class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
-                  >
-                    {#each collarStyles as cs (cs.value)}
-                      <option value={cs.value}>{cs.label}</option>
-                    {/each}
-                  </select>
-                </div>
-                <div>
-                  <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
-                    <span>Bordo Trim</span>
-                    <span>{activeLayer.properties.trimWidth ?? 16}px</span>
+            {#if studio.selectedLayer?.type === 'COLLAR' || (collarLayer && studio.selectedLayerId === collarLayer.id)}
+              {@const activeCollar = studio.selectedLayer?.type === 'COLLAR' ? studio.selectedLayer : collarLayer}
+              {#if activeCollar}
+                <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
+                  <div>
+                    <label for="collar-style-tab" class="block text-xs text-[#94A3B8] mb-1">Taglio Colletto</label>
+                    <select
+                      id="collar-style-tab"
+                      value={activeCollar.properties.collarStyle || 'V_NECK'}
+                      onchange={(e) => studio.updateLayerProperty(activeCollar.id, 'collarStyle', (e.target as HTMLSelectElement).value)}
+                      class="w-full px-2.5 py-1.5 text-xs bg-[#1A2230] border border-[#2E3D56] rounded-lg text-white"
+                    >
+                      {#each collarStyles as cs (cs.value)}
+                        <option value={cs.value}>{cs.label}</option>
+                      {/each}
+                    </select>
                   </div>
-                  <input
-                    type="range"
-                    min="8"
-                    max="36"
-                    step="1"
-                    value={activeLayer.properties.trimWidth ?? 16}
-                    oninput={(e) => studio.updateLayerProperty(activeLayer.id, 'trimWidth', parseInt((e.target as HTMLInputElement).value, 10))}
-                    class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
-                  />
+                  <div>
+                    <div class="flex justify-between text-xs text-[#94A3B8] font-mono-tabular mb-1">
+                      <span>Bordo Trim</span>
+                      <span>{activeCollar.properties.trimWidth ?? 16}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="8"
+                      max="36"
+                      step="1"
+                      value={activeCollar.properties.trimWidth ?? 16}
+                      oninput={(e) => studio.updateLayerProperty(activeCollar.id, 'trimWidth', parseInt((e.target as HTMLInputElement).value, 10))}
+                      class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#253146] accent-[#00C49F]"
+                    />
+                  </div>
                 </div>
-              </div>
+              {/if}
             {:else if studio.selectedLayer?.type === 'SLEEVES'}
               {@const activeLayer = studio.selectedLayer}
               <div class="grid grid-cols-2 gap-3 p-3 bg-[#0F141C] border border-[#2E3D56] rounded-xl items-center">
@@ -793,8 +829,8 @@
                   >
                     <div class="flex items-center justify-between">
                       <span class="text-sm">{preset.icon}</span>
-                      <span class="text-[9px] font-mono-tabular text-[#94A3B8]">
-                        R:{preset.roughness.toFixed(2)}
+                      <span class="text-[10px] font-bold text-[#00C49F]">
+                        {preset.finishLabel}
                       </span>
                     </div>
                     <span class="text-xs font-semibold {isSelected ? 'text-[#00C49F]' : 'text-white'}">

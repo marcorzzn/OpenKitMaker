@@ -187,6 +187,9 @@ class OpenKitMakerStudioStore {
 
   navigateTo(screen: ScreenId): void {
     this.currentScreen = screen;
+    if (screen === 'SCR-EDITOR' && typeof window !== 'undefined') {
+      this.editorViewMode = window.innerWidth >= 1024 ? 'SPLIT' : '2D';
+    }
   }
 
   setGarmentType(type: GarmentType | 'ALL'): void {
@@ -245,6 +248,9 @@ class OpenKitMakerStudioStore {
     this.activeGarmentType = 'JERSEY';
     this.selectedLayerId = newKit.layers[0]?.id || '';
     this.activeLayerTypeFilter = 'ALL';
+    if (typeof window !== 'undefined') {
+      this.editorViewMode = window.innerWidth >= 1024 ? 'SPLIT' : '2D';
+    }
     this.textureRevision++;
     this.currentScreen = 'SCR-EDITOR';
     this.notify('info', `Template "${template.name}" caricato nello Studio.`);
@@ -258,6 +264,9 @@ class OpenKitMakerStudioStore {
     this.selectedLayerId = cloned.layers[0]?.id || '';
     this.lightingPreset = cloned.metadata?.lightingPreset || 'studio';
     this.fabricType = cloned.metadata?.fabricType || 'MESH';
+    if (typeof window !== 'undefined') {
+      this.editorViewMode = window.innerWidth >= 1024 ? 'SPLIT' : '2D';
+    }
     this.textureRevision++;
     this.currentScreen = targetScreen;
   }

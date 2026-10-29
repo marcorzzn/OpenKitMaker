@@ -264,7 +264,8 @@ function buildTailoredJerseyMeshGroup(
 
   for (let i = 0; i < posAttr.count; i++) {
     vertex.fromBufferAttribute(posAttr, i);
-    const normY = (vertex.y + torsoHeight / 2) / torsoHeight; // 0 (bottom hem) .. 1 (shoulders)
+    const rawNormY = (vertex.y + torsoHeight / 2) / torsoHeight; // 0 (bottom hem) .. 1 (shoulders)
+    const normY = Math.max(0, Math.min(1, rawNormY));
     const angle = Math.atan2(vertex.x, vertex.z); // 0 = front (+Z), PI/-PI = back (-Z)
 
     // Anatomical athletic silhouette shaping

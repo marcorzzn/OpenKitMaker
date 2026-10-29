@@ -44,7 +44,7 @@
   }
 </script>
 
-<section class="max-w-7xl mx-auto px-6 py-10 space-y-12">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-12 overflow-hidden">
   <!-- Hero Banner -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch bg-gradient-to-br from-[#1A2230] to-[#121824] border border-[#2E3D56] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
     <!-- Background Glow Effect -->
