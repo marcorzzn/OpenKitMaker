@@ -185,9 +185,9 @@
   </div>
 
   <!-- FLOATING CONTROL BAR OVER 3D VIEWPORT (Material Design 3 Glassmorphism) -->
-  <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[96%] max-w-4xl bg-[#141B26]/85 backdrop-blur-md border border-[#2E3D56]/70 rounded-2xl p-2 shadow-2xl flex flex-wrap items-center justify-between gap-2.5 transition-all">
+  <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[96%] max-w-5xl bg-[#141B26]/90 backdrop-blur-md border border-[#2E3D56]/70 rounded-2xl p-1.5 shadow-2xl flex flex-nowrap items-center justify-start xl:justify-between gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden transition-all">
     <!-- 1. Viste Rapide (Camera Presets) -->
-    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1 shrink-0">
       <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Vista:</span>
       <button
         type="button"
@@ -248,7 +248,7 @@
     </div>
 
     <!-- 2. Controlli Luce (Lighting Presets) -->
-    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1 shrink-0">
       <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Luce:</span>
       {#each [
         { id: 'studio', label: 'Studio', emoji: '💡' },
@@ -272,7 +272,7 @@
     </div>
 
     <!-- 3. Toggle Manichino & Vista Anatomica -->
-    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1 shrink-0">
       <button
         type="button"
         id="btn-toggle-mannequin"
@@ -300,7 +300,7 @@
     </div>
 
     <!-- 4. Sfondo (Background Presets) -->
-    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1 shrink-0">
       <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Sfondo:</span>
       {#each [
         { id: 'dark', label: 'Scuro', emoji: '⬛' },
@@ -323,7 +323,7 @@
     </div>
 
     <!-- 5. Tessuto & Materiale (Fabric Engine) -->
-    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1">
+    <div class="flex items-center gap-1 bg-[#0F141C]/80 border border-[#2E3D56]/50 rounded-xl p-1 shrink-0">
       <span class="text-[10px] uppercase font-bold text-[#64748B] px-1.5 hidden md:inline">Tessuto:</span>
       {#each [
         { id: 'MESH', label: 'Mesh', emoji: '🎽', title: 'Mesh Traspirante (Micro-fori opachi)' },

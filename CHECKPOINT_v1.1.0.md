@@ -211,6 +211,36 @@ Tutti i controlli incrociati della **Fase 2** sono stati superati con successo:
 - **Mobile scrollWidth**: 390px (Viewport: 390px) — Parità geometrica perfetta.
 - **Stato**: ✅ **QA PASSED — 100% GREEN E2E COLLAUDO**
 
+---
+
+## 6. UI/UX Polish Audit & Integrazione Brand Identity (Web & Android)
+
+A valle del QA, è stato condotto un rigoroso **UI/UX Polish Audit** secondo i 5 standard prefissati:
+
+### 1. Nuova Brand Identity & Favicon Ovunque (Web & Android)
+- **Generazione Asset da Logo Ufficiale**:
+  - `scripts/generate_all_icons.cjs` ha generato tutti i formati grafici ad alta risoluzione:
+    - Web: `web/public/apple-touch-icon.png` (180×180), `favicon.ico` multi-risoluzione (16, 32, 48px), `favicon.png`, `favicon.svg`, `icon.svg`, `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-*.png`, `assets/logo.png`, `assets/logo-transparent.png`.
+    - Web Manifest: aggiornato `web/public/manifest.webmanifest` e `web/index.html` con favicon dinamica e colore tema `#0D1A2D`.
+    - Android APK: `native/app/src/main/res/drawable/app_logo.png`, `ic_launcher_foreground.png`, adaptive icons in `mipmap-anydpi-v26/ic_launcher.xml` e `ic_launcher_round.xml`, e mipmap per tutte le densità (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`) + `ic_launcher-playstore.png` (512×512). Aggiornato `AndroidManifest.xml` con `@mipmap/ic_launcher` e `@mipmap/ic_launcher_round`.
+
+### 2. Risoluzione Z-Index & Sovrapposizioni (Overlay)
+- **Barra Flottante 3D**: in `web/src/components/Viewport3D.svelte`, eliminato `flex-wrap` e implementato layout a riga singola orizzontalmente scorrevole (`flex-nowrap overflow-x-auto [scrollbar-width:none] shrink-0`). L'altezza della barra è bloccata a 44-48px e non cresce mai in verticale, eliminando qualsiasi sovrapposizione sul colletto o sul petto del modello 3D.
+- **Dialoghi e Modali con Chiusura Certa**:
+  - `ScreenSaved.svelte`: aggiunto backdrop interattivo con chiusura al click esterno (`click-outside`) e pulsante di chiusura esplicito `✕`.
+  - `ScreenExport.svelte`: aggiunto pulsante di chiusura rapida `✕` sulla card di riepilogo esportazione.
+  - Android Jetpack Compose: integrato `BackHandler(enabled = isMenuOrSheetOpen)` in `TopNavBar.kt` e `EditorScreen.kt` per intercettare il tasto hardware "Back" dello smartphone e chiudere prima i menu e i bottom sheet aperti.
+
+### 3. Coerenza Dimensionale dei Componenti
+- Standardizzate le altezze e i raggi di curvatura su Web (`ScreenEditor.svelte`, `ScreenExport.svelte`, `ScreenHome.svelte`, `ScreenCatalog.svelte`) e Compose (`EditorScreen.kt`, `ExportScreen.kt`):
+  - Pulsanti primari di azione: `h-12 rounded-xl` (48px altezza, 12px border radius).
+  - Pulsanti secondari e selettori di capo: `h-10 rounded-xl` (40px altezza).
+  - Toggle e selettori compatti di vista: `h-8 rounded-lg` (32px altezza).
+
+### 4. Chiarezza di Navigazione & Mobile Bottom Nav
+- Su schermi mobile (`< 640px`), l'intestazione superiore è stata ripulita da testi compressi o wrap forzati: il logo e il titolo rimangono puliti in alto, mentre la navigazione primaria è affidata a una **Mobile Bottom Navigation Bar** fissa (`fixed bottom-0 left-0 right-0 z-40 h-16`), con icone nitide, target tattili da 48px e feedback visivo della schermata attiva.
+
+
 
 
 

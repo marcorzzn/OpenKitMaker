@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0D1A2D</color>
+    <color name="openkit_primary">#0F52BA</color>
+    <color name="openkit_secondary">#00C49F</color>
+    <color name="openkit_bg">#0F141C</color>
+</resources>

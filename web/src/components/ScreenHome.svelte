@@ -72,7 +72,7 @@
         <button
           type="button"
           onclick={() => studio.navigateTo('SCR-CATALOG')}
-          class="px-6 py-3.5 text-sm font-bold text-white bg-gradient-to-r from-[#0F52BA] to-[#0D47A1] hover:from-[#1565C0] hover:to-[#0F52BA] rounded-xl transition-all shadow-lg shadow-[#0F52BA]/25 cursor-pointer flex items-center gap-2"
+          class="h-12 px-6 text-sm font-bold text-white bg-gradient-to-r from-[#0F52BA] to-[#0D47A1] hover:from-[#1565C0] hover:to-[#0F52BA] rounded-xl transition-all shadow-lg shadow-[#0F52BA]/25 cursor-pointer flex items-center gap-2"
         >
           <span>👕</span>
           <span>Inizia da un Modello</span>
@@ -81,7 +81,7 @@
         <button
           type="button"
           onclick={() => studio.navigateTo('SCR-SAVED')}
-          class="px-5 py-3.5 text-sm font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+          class="h-12 px-5 text-sm font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
         >
           <span>📁</span>
           <span>I Miei Progetti ({studio.savedKits.length})</span>
@@ -90,7 +90,7 @@
         <button
           type="button"
           onclick={() => fileInputRef?.click()}
-          class="px-5 py-3.5 text-sm font-medium text-[#94A3B8] hover:text-white bg-[#1A2230]/70 hover:bg-[#1A2230] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+          class="h-12 px-5 text-sm font-medium text-[#94A3B8] hover:text-white bg-[#1A2230]/70 hover:bg-[#1A2230] border border-[#2E3D56] rounded-xl transition-colors cursor-pointer flex items-center gap-2"
         >
           <span>📥</span>
           <span>Importa .ZIP</span>
@@ -139,7 +139,7 @@
       <button
         type="button"
         onclick={() => studio.navigateTo('SCR-EDITOR')}
-        class="w-full py-3 px-4 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-xl transition-all shadow-md shadow-[#00C49F]/20 cursor-pointer flex items-center justify-center gap-1.5"
+        class="w-full h-12 px-4 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-xl transition-all shadow-md shadow-[#00C49F]/20 cursor-pointer flex items-center justify-center gap-1.5"
       >
         <span>Apri nell'Editor 3D</span>
         <span>→</span>

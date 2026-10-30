@@ -172,9 +172,10 @@
             <button
               type="button"
               onclick={() => studio.selectTemplate(tpl)}
-              class="px-4 py-2 text-xs font-semibold text-white bg-[#0F52BA] group-hover:bg-[#00C49F] group-hover:text-[#0F141C] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              class="h-10 px-4 text-xs font-bold text-white bg-[#0F52BA] group-hover:bg-[#00C49F] group-hover:text-[#0F141C] rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 shadow-md shadow-[#0F52BA]/20"
             >
-              Clona e Personalizza →
+              <span>Clona e Personalizza</span>
+              <span>→</span>
             </button>
           </div>
         </article>

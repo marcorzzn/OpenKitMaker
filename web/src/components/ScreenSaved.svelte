@@ -219,33 +219,52 @@
 
   <!-- Confirmation Dialog for Delete (Required by SCR-SAVED) -->
   {#if deletingKit}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
     <div
-      class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
       role="dialog"
+      tabindex="-1"
       aria-modal="true"
       aria-labelledby="delete-modal-title"
+      onclick={() => (deletingKit = null)}
     >
-      <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-        <h3 id="delete-modal-title" class="text-xl font-bold font-display text-white">
-          {i18n.saved.confirm_delete_title}
-        </h3>
-        <p class="text-sm text-[#94A3B8]">
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div
+        class="bg-[#1A2230] border border-[#2E3D56] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl cursor-default"
+        onclick={(e) => e.stopPropagation()}
+        role="document"
+      >
+        <div class="flex items-center justify-between border-b border-[#2E3D56] pb-3">
+          <h3 id="delete-modal-title" class="text-lg font-bold font-display text-white">
+            {i18n.saved.confirm_delete_title}
+          </h3>
+          <button
+            type="button"
+            onclick={() => (deletingKit = null)}
+            class="w-8 h-8 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#253146] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
+            aria-label="Chiudi"
+          >
+            ✕
+          </button>
+        </div>
+
+        <p class="text-sm text-[#94A3B8] leading-relaxed">
           {i18n.saved.confirm_delete_msg}
-          <span class="block mt-2 text-white font-semibold">"{deletingKit.name}"</span>
+          <span class="block mt-2 text-white font-semibold text-base">"{deletingKit.name}"</span>
         </p>
 
         <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#2E3D56]">
           <button
             type="button"
             onclick={() => (deletingKit = null)}
-            class="px-4 py-2 text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-lg cursor-pointer"
+            class="h-10 px-4 text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0F141C] border border-[#2E3D56] rounded-xl cursor-pointer transition-colors"
           >
             Annulla
           </button>
           <button
             type="button"
             onclick={confirmDelete}
-            class="px-4 py-2 text-xs font-semibold text-white bg-[#EF4444] hover:bg-red-600 rounded-lg cursor-pointer"
+            class="h-10 px-5 text-xs font-bold text-white bg-[#EF4444] hover:bg-red-600 rounded-xl cursor-pointer shadow-md shadow-red-500/20 transition-colors"
           >
             Elimina Definitivamente
           </button>

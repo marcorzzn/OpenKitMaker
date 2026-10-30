@@ -415,31 +415,34 @@
           type="button"
           disabled={isExporting}
           onclick={() => handleExportSingleGarment('JERSEY')}
-          class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
+          class="h-10 px-3 text-xs font-bold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
         >
-          👕 Maglia {selectedResolution === 4096 ? '4K' : '2K'}
+          <span>👕 Maglia</span>
+          <span>{selectedResolution === 4096 ? '4K' : '2K'}</span>
         </button>
         <button
           type="button"
           disabled={isExporting}
           onclick={() => handleExportSingleGarment('SHORTS')}
-          class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
+          class="h-10 px-3 text-xs font-bold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
         >
-          🩳 Shorts {selectedResolution === 4096 ? '4K' : '2K'}
+          <span>🩳 Shorts</span>
+          <span>{selectedResolution === 4096 ? '4K' : '2K'}</span>
         </button>
         <button
           type="button"
           disabled={isExporting}
           onclick={() => handleExportSingleGarment('SOCKS')}
-          class="py-2.5 px-3 text-xs font-semibold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-lg transition-colors cursor-pointer text-center"
+          class="h-10 px-3 text-xs font-bold text-white bg-[#0F52BA] hover:bg-[#0A387E] disabled:opacity-50 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
         >
-          🧦 Calze {selectedResolution === 4096 ? '4K' : '2K'}
+          <span>🧦 Calze</span>
+          <span>{selectedResolution === 4096 ? '4K' : '2K'}</span>
         </button>
       </div>
     </div>
 
     <!-- Format 2: Interoperable Full Kit ZIP Archive (FUN-EXPORT-ZIP) -->
-    <div class="bg-[#1A2230] border border-[#2E3D56] rounded-xl p-6 flex flex-col justify-between space-y-5">
+    <div class="bg-[#1A2230] border border-[#2E3D56] rounded-2xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
       <div class="space-y-2">
         <div class="text-xs text-[#00C49F] font-mono-tabular">
           INTEROPERABILE · CROSS-PLATFORM WEB ↔ ANDROID
@@ -459,14 +462,15 @@
         type="button"
         disabled={isExporting}
         onclick={handleExportZip}
-        class="w-full py-3 px-5 text-sm font-semibold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+        class="w-full h-12 px-5 text-sm font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] disabled:opacity-50 rounded-xl transition-all shadow-md shadow-[#00C49F]/20 cursor-pointer flex items-center justify-center gap-2"
       >
-        📦 Esporta Archivio Full Kit (.ZIP)
+        <span>📦</span>
+        <span>Esporta Archivio Full Kit (.ZIP)</span>
       </button>
     </div>
 
     <!-- Format 3: PBR Materials Bundle (STEP 4) -->
-    <div class="bg-[#1A2230] border border-[#8B5CF6]/50 rounded-xl p-6 flex flex-col justify-between space-y-5">
+    <div class="bg-[#1A2230] border border-[#8B5CF6]/50 rounded-2xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
       <div class="space-y-2">
         <div class="text-xs text-[#A78BFA] font-mono-tabular">
           MATERIAL ENGINE · TESSUTO PBR WORKFLOW
@@ -489,14 +493,15 @@
         type="button"
         disabled={isExporting}
         onclick={handleExportPbrBundle}
-        class="w-full py-3 px-5 text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+        class="w-full h-12 px-5 text-sm font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 rounded-xl transition-all shadow-md shadow-purple-600/20 cursor-pointer flex items-center justify-center gap-2"
       >
-        🎨 Esporta Bundle Materiali PBR (.ZIP)
+        <span>🎨</span>
+        <span>Esporta Bundle Materiali PBR (.ZIP)</span>
       </button>
     </div>
 
     <!-- Format 4: Standalone 3D Model (.GLB) (STEP 4) -->
-    <div class="bg-[#1A2230] border border-[#38BDF8]/50 rounded-xl p-6 flex flex-col justify-between space-y-5">
+    <div class="bg-[#1A2230] border border-[#38BDF8]/50 rounded-2xl p-6 flex flex-col justify-between space-y-5 shadow-lg">
       <div class="space-y-2">
         <div class="text-xs text-[#38BDF8] font-mono-tabular">
           UNIVERSAL 3D ASSET · GLTF BINARY CONTAINER
@@ -516,7 +521,7 @@
         type="button"
         disabled={isExporting}
         onclick={handleExportGlb}
-        class="w-full py-3 px-5 text-sm font-semibold text-[#0F141C] bg-[#38BDF8] hover:bg-[#0284C7] disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+        class="w-full h-12 px-5 text-sm font-bold text-[#0F141C] bg-[#38BDF8] hover:bg-[#0284C7] disabled:opacity-50 rounded-xl transition-all shadow-md shadow-sky-500/20 cursor-pointer flex items-center justify-center gap-2"
       >
         🧊 Scarica Modello 3D Kit (.GLB)
       </button>
@@ -525,17 +530,29 @@
 
   <!-- Completion & Manifest Verification Panel -->
   {#if lastExportSummary}
-    <div class="bg-[#1A2230] border border-[#10B981]/50 rounded-xl p-6 space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="text-sm font-semibold text-[#10B981]">
-          Esportazione Completata: {lastExportSummary.filename} ({lastExportSummary.sizeKb} KB)
-        </div>
-        {#if lastExportSummary.sha256}
-          <div class="text-xs text-[#94A3B8] font-mono-tabular">
-            SHA-256: {lastExportSummary.sha256.slice(0, 24)}…
+    <div class="bg-[#1A2230] border border-[#10B981]/50 rounded-2xl p-6 space-y-4 shadow-xl relative">
+      <div class="flex items-center justify-between gap-3 border-b border-[#2E3D56] pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-[#10B981] text-base">✓</span>
+          <div class="text-sm font-bold text-[#10B981]">
+            Esportazione Completata: {lastExportSummary.filename} ({lastExportSummary.sizeKb} KB)
           </div>
-        {/if}
+        </div>
+        <button
+          type="button"
+          onclick={() => (lastExportSummary = null)}
+          class="w-7 h-7 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#253146] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
+          aria-label="Chiudi riepilogo esportazione"
+        >
+          ✕
+        </button>
       </div>
+
+      {#if lastExportSummary.sha256}
+        <div class="text-xs text-[#94A3B8] font-mono-tabular">
+          SHA-256: <span class="text-white">{lastExportSummary.sha256}</span>
+        </div>
+      {/if}
 
       {#if lastExportSummary.manifest}
         <details class="bg-[#0F141C] border border-[#2E3D56] rounded-lg p-3">

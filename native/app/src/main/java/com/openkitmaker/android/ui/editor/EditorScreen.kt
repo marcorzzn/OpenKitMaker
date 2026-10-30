@@ -1,6 +1,8 @@
 // Implements: SCR-EDITOR / FUN-MANAGE-LAYERS / FUN-EDIT-COLOR / FUN-COMPOSITE-2D / FUN-PREVIEW-3D / FUN-SAVE-LOCAL
 package com.openkitmaker.android.ui.editor
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -118,6 +120,15 @@ fun EditorScreen(
 
     var activeTab by remember { mutableStateOf(BottomEditorTab.LAYERS) }
     var showRawUvSheet by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showMenu || showRawUvSheet) {
+        if (showMenu) {
+            showMenu = false
+        } else if (showRawUvSheet) {
+            showRawUvSheet = false
+        }
+    }
 
     val context = LocalContext.current
     val currentKit = kit ?: return
@@ -173,7 +184,6 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    var showMenu by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier.padding(end = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(2.dp),

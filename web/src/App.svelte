@@ -17,7 +17,7 @@
 <div class="min-h-screen flex flex-col bg-[#0F141C] text-white">
   <TopNav />
 
-  <main class="flex-1">
+  <main class="flex-1 pb-20 sm:pb-4">
     {#if studio.currentScreen === 'SCR-HOME'}
       <ScreenHome />
     {:else if studio.currentScreen === 'SCR-CATALOG'}
@@ -33,7 +33,7 @@
 
   <!-- Toast Notifications -->
   {#if studio.toasts.length > 0}
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div class="fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
       {#each studio.toasts as t (t.id)}
         <div
           class="pointer-events-auto px-4 py-3 rounded-xl border shadow-xl flex items-center justify-between gap-3 text-xs font-medium {t.type ===

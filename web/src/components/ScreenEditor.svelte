@@ -440,12 +440,12 @@
     </div>
 
     <!-- View Mode Selector (Vista 2D | Vista 3D | Vista Doppia) -->
-    <div class="inline-flex items-center gap-1 p-1 bg-[#0F141C] border border-[#2E3D56] rounded-lg">
+    <div class="inline-flex items-center gap-1 p-1 bg-[#0F141C] border border-[#2E3D56] rounded-xl">
       <button
         type="button"
         onclick={() => (studio.editorViewMode = '2D')}
-        class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === '2D'
-          ? 'bg-[#0F52BA] text-white'
+        class="h-8 px-3 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === '2D'
+          ? 'bg-[#0F52BA] text-white shadow-sm'
           : 'text-[#94A3B8] hover:text-white'}"
       >
         {i18n.editor.view_2d}
@@ -453,8 +453,8 @@
       <button
         type="button"
         onclick={() => (studio.editorViewMode = '3D')}
-        class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === '3D'
-          ? 'bg-[#0F52BA] text-white'
+        class="h-8 px-3 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === '3D'
+          ? 'bg-[#0F52BA] text-white shadow-sm'
           : 'text-[#94A3B8] hover:text-white'}"
       >
         {i18n.editor.view_3d}
@@ -462,8 +462,8 @@
       <button
         type="button"
         onclick={() => (studio.editorViewMode = 'SPLIT')}
-        class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === 'SPLIT'
-          ? 'bg-[#0F52BA] text-white'
+        class="h-8 px-3 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer {studio.editorViewMode === 'SPLIT'
+          ? 'bg-[#0F52BA] text-white shadow-sm'
           : 'text-[#94A3B8] hover:text-white'}"
       >
         {i18n.editor.view_split}
@@ -475,16 +475,18 @@
       <button
         type="button"
         onclick={() => studio.saveActiveKitToLocal()}
-        class="px-4 py-2 text-xs font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+        class="h-10 px-4 text-xs font-semibold text-white bg-[#253146] hover:bg-[#2E3D56] border border-[#2E3D56] rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
       >
-        {i18n.editor.save_draft}
+        <span>💾</span>
+        <span>{i18n.editor.save_draft}</span>
       </button>
       <button
         type="button"
         onclick={() => studio.navigateTo('SCR-EXPORT')}
-        class="px-4 py-2 text-xs font-semibold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+        class="h-10 px-5 text-xs font-bold text-[#0F141C] bg-[#00C49F] hover:bg-[#10B981] rounded-xl transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-md shadow-[#00C49F]/20 flex items-center gap-1.5"
       >
-        {i18n.editor.export_btn} →
+        <span>📤</span>
+        <span>{i18n.editor.export_btn} →</span>
       </button>
     </div>
   </div>
@@ -497,7 +499,7 @@
       <button
         type="button"
         onclick={() => studio.setGarmentType('JERSEY')}
-        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'JERSEY'
+        class="h-10 px-4 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'JERSEY'
           ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
           : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
       >
@@ -508,7 +510,7 @@
       <button
         type="button"
         onclick={() => studio.setGarmentType('SHORTS')}
-        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SHORTS'
+        class="h-10 px-4 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SHORTS'
           ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
           : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
       >
@@ -519,7 +521,7 @@
       <button
         type="button"
         onclick={() => studio.setGarmentType('SOCKS')}
-        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SOCKS'
+        class="h-10 px-4 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'SOCKS'
           ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-2 ring-[#38BDF8]'
           : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
       >
@@ -530,7 +532,7 @@
       <button
         type="button"
         onclick={() => studio.setGarmentType('ALL')}
-        class="px-3.5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'ALL'
+        class="h-10 px-4 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer {studio.activeGarmentType === 'ALL'
           ? 'bg-[#00C49F] text-[#0F141C] font-extrabold shadow-md shadow-[#00C49F]/30 ring-2 ring-white'
           : 'bg-[#1A2230] text-[#94A3B8] hover:text-white hover:bg-[#253146]'}"
       >
@@ -544,7 +546,7 @@
       <button
         type="button"
         onclick={() => studio.toggleMannequin()}
-        class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center gap-2 cursor-pointer {studio.showMannequin
+        class="h-10 px-4 text-xs font-semibold rounded-xl border transition-all flex items-center gap-2 cursor-pointer {studio.showMannequin
           ? 'bg-[#253146] border-[#00C49F] text-[#00C49F]'
           : 'bg-[#1A2230] border-[#2E3D56] text-[#64748B] hover:text-[#94A3B8]'}"
       >
@@ -561,14 +563,14 @@
       <!-- Left Column: 4-Tab Sports Design Station (lg:col-span-4) -->
       <div class="lg:col-span-4 bg-[#1A2230] border border-[#2E3D56] rounded-xl overflow-hidden flex flex-col shadow-xl">
         <!-- 4 Primary Functional Navigation Tabs -->
-        <div class="grid grid-cols-4 bg-[#0F141C] border-b border-[#2E3D56] p-1.5 gap-1">
+        <div class="grid grid-cols-4 bg-[#0F141C] border-b border-[#2E3D56] p-1.5 gap-1.5">
           <button
             type="button"
             onclick={() => {
               activeEditorTab = 'COLOR_FABRIC';
               studio.selectLayerByType('BASE');
             }}
-            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'COLOR_FABRIC'
+            class="h-11 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'COLOR_FABRIC'
               ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
               : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
           >
@@ -587,7 +589,7 @@
                 studio.addNewLayer('PATTERN');
               }
             }}
-            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'PATTERNS'
+            class="h-11 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'PATTERNS'
               ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
               : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
           >
@@ -603,7 +605,7 @@
               else if (activeLogoSubTab === 'SPONSOR') getOrCreateLayer('SPONSOR');
               else if (activeLogoSubTab === 'NUMBER') getOrCreateLayer('NUMBER');
             }}
-            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LOGOS'
+            class="h-11 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LOGOS'
               ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
               : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
           >
@@ -614,7 +616,7 @@
           <button
             type="button"
             onclick={() => (activeEditorTab = 'LAYERS')}
-            class="py-2 px-1 rounded-lg text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LAYERS'
+            class="h-11 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 {activeEditorTab === 'LAYERS'
               ? 'bg-[#0F52BA] text-white shadow-md shadow-[#0F52BA]/30 ring-1 ring-white/30 font-bold'
               : 'text-[#94A3B8] hover:text-white hover:bg-[#1A2230]'}"
           >
@@ -644,8 +646,8 @@
                       const l = getOrCreateLayer('BASE');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👕</span>
@@ -658,8 +660,8 @@
                       const l = getOrCreateLayer('COLLAR');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👔</span>
@@ -672,8 +674,8 @@
                       const l = getOrCreateLayer('SLEEVES');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'SLEEVES'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'SLEEVES'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>💪</span>
@@ -686,8 +688,8 @@
                       const l = getOrCreateLayer('BASE');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="col-span-3 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="col-span-3 h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>🩳</span>
@@ -700,8 +702,8 @@
                       const l = getOrCreateLayer('BASE');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'BASE'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>🧦</span>
@@ -713,8 +715,8 @@
                       const l = getOrCreateLayer('COLLAR');
                       if (l) studio.selectedLayerId = l.id;
                     }}
-                    class="col-span-2 px-2.5 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
-                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm font-bold'
+                    class="col-span-2 h-10 px-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 {studio.selectedLayer?.type === 'COLLAR'
+                      ? 'bg-[#0F52BA] text-white border-[#38BDF8] shadow-sm'
                       : 'bg-[#0F141C] text-[#94A3B8] border-[#2E3D56] hover:text-white'}"
                   >
                     <span>👔</span>

@@ -77,19 +77,35 @@ function recordIssue(category, severity, location, defect, suggestion = 'Nessun 
     );
   }
 
-  // Check top navigation on mobile
-  const navButtonsWrap = await page.evaluate(() => {
-    const nav = document.querySelector('nav');
-    return nav ? nav.scrollHeight > 75 : false;
+  // Check top navigation & header on mobile
+  const navHeaderWrap = await page.evaluate(() => {
+    const header = document.querySelector('header');
+    return header ? header.scrollHeight > 75 : false;
   });
-  if (navButtonsWrap) {
+  if (navHeaderWrap) {
     recordIssue(
       'Layout/Overflow',
       'Minore',
       'Top Navigation Mobile',
       'La barra di navigazione superiore su mobile occupa più di 75px verticali a causa del wrap dei pulsanti.',
-      'Su schermi piccoli, nascondere il testo dei tab secondari lasciando solo le icone oppure passare a un drawer.',
+      'Su schermi piccoli, spostare i tab nella barra inferiore mobile (Bottom Navigation Bar).',
       '01_mobile_home.png'
+    );
+  }
+
+  // Check presence of mobile bottom navigation bar
+  const hasBottomNav = await page.evaluate(() => {
+    const bottomNav = document.querySelector('nav.fixed.bottom-0');
+    return !!bottomNav;
+  });
+  console.log('Mobile bottom nav present:', hasBottomNav);
+  if (!hasBottomNav) {
+    recordIssue(
+      'UI/UX Mobile',
+      'Minore',
+      'Mobile Bottom Nav',
+      'La barra di navigazione inferiore per mobile non è stata rilevata nel DOM.',
+      'Aggiungere una Bottom Navigation Bar fissa per dispositivi compatti.'
     );
   }
 
@@ -231,6 +247,21 @@ function recordIssue(category, severity, location, defect, suggestion = 'Nessun 
     await splitBtn.click();
     await page.waitForTimeout(600);
     await page.screenshot({ path: 'qa_screenshots/03_view_split.png' });
+  }
+
+  // Check floating bar height (must not exceed 65px to ensure single-row non-overlapping layout)
+  const floatingBarHeight = await page.evaluate(() => {
+    const bar = document.querySelector('#btn-cam-front')?.closest('div.absolute');
+    return bar ? bar.clientHeight : 0;
+  });
+  console.log(`Floating bar height: ${floatingBarHeight}px`);
+  if (floatingBarHeight > 65) {
+    recordIssue(
+      'Layout/Overlay',
+      'Grave',
+      'Barra Flottante 3D',
+      `La barra controlli 3D è alta ${floatingBarHeight}px (> 65px) e si sovrappone al modello. Deve rimanere su una singola riga orizzontale compatta.`
+    );
   }
 
   // ==========================================
@@ -513,6 +544,69 @@ function recordIssue(category, severity, location, defect, suggestion = 'Nessun 
   }
 
   await page.screenshot({ path: 'qa_screenshots/05_mobile_export.png', fullPage: true });
+
+  // Reset viewport to desktop for modal testing
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.waitForTimeout(400);
+
+  // ==========================================
+  // FASE 5B: Test Modali & Popup (Standard 1: "X" + Click-Outside)
+  // ==========================================
+  console.log('\n--- FASE 5B: Test Modali & Popups (Standard 1) ---');
+  // Navigate to SCR-SAVED to test modal
+  const savedNavBtn = (await page.$('button:has-text("Progetti")')) || (await page.$('button:has-text("I Miei Progetti")'));
+  if (savedNavBtn) {
+    await savedNavBtn.click();
+    await page.waitForTimeout(800);
+
+    const deleteBtn = await page.$('button:has-text("Elimina")');
+    if (deleteBtn) {
+      console.log('Opening delete modal in SCR-SAVED...');
+      await deleteBtn.click();
+      await page.waitForTimeout(400);
+
+      // Verify modal is open
+      const modal = await page.$('[role="dialog"]');
+      if (!modal) {
+        recordIssue('Modali/UI', 'Grave', 'SCR-SAVED', 'La finestra di dialogo di eliminazione non si è aperta.');
+      } else {
+        // Test "X" close button
+        const closeXBtn = await page.$('button[aria-label="Chiudi"]');
+        if (!closeXBtn) {
+          recordIssue('Modali/UI', 'Grave', 'SCR-SAVED Modal', 'Il pulsante "X" per chiudere la finestra non è presente.');
+        } else {
+          console.log('Testing "X" button close...');
+          await closeXBtn.click();
+          await page.waitForTimeout(400);
+          const modalStillOpen = await page.$('[role="dialog"]');
+          if (modalStillOpen) {
+            recordIssue('Modali/UI', 'Grave', 'SCR-SAVED Modal', 'Il click sul pulsante "X" non ha chiuso la finestra modale.');
+          } else {
+            console.log('Modal successfully closed via "X" button.');
+          }
+        }
+
+        // Re-open and test click-outside
+        console.log('Testing click-outside to close modal...');
+        const reDeleteBtn = await page.$('button:has-text("Elimina")');
+        if (reDeleteBtn) {
+          await reDeleteBtn.click();
+          await page.waitForTimeout(400);
+          const modalBackdrop = await page.$('[role="dialog"]');
+          if (modalBackdrop) {
+            await modalBackdrop.click({ position: { x: 10, y: 10 } });
+            await page.waitForTimeout(400);
+            const modalClosedByBackdrop = await page.$('[role="dialog"]');
+            if (modalClosedByBackdrop) {
+              recordIssue('Modali/UI', 'Grave', 'SCR-SAVED Modal', 'Il click fuori dall\'area modale (click-outside) non ha chiuso la finestra.');
+            } else {
+              console.log('Modal successfully closed via click-outside.');
+            }
+          }
+        }
+      }
+    }
+  }
 
   // ==========================================
   // FASE 6: Sintesi Errori Console & Report
